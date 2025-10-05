@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water Management - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        water: '#0ea5e9',
+                        aqua: '#06b6d4',
+                        navy: '#1e40af',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .water-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #06b6d4 50%, #1e40af 100%);
+        }
+        .water-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .water-card:hover {
+            transform: translateY(-5px);
+            border-color: #0ea5e9;
+            box-shadow: 0 10px 25px rgba(14, 165, 233, 0.2);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .water-level-indicator {
+            background: linear-gradient(to top, #0ea5e9 0%, #06b6d4 50%, #0284c7 100%);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .water-wave {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 100%);
+            transform: translateX(-50%);
+            animation: wave 3s ease-in-out infinite;
+        }
+        @keyframes wave {
+            0%, 100% { transform: translateX(-50%) translateY(0px); }
+            50% { transform: translateX(-50%) translateY(-10px); }
+        }
+        .irrigation-zone {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            border: 2px dashed #22c55e;
+            transition: all 0.3s ease;
+        }
+        .irrigation-zone.active {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-color: #0ea5e9;
+            animation: irrigate 2s ease-in-out infinite;
+        }
+        @keyframes irrigate {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .drought-alert {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-left: 4px solid #f59e0b;
+            animation: pulse 2s infinite;
+        }
+        .flood-alert {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-left: 4px solid #0ea5e9;
+            animation: pulse 2s infinite;
+        }
+        .water-quality-meter {
+            background: conic-gradient(
+                #ef4444 0deg 72deg,
+                #f59e0b 72deg 144deg,
+                #22c55e 144deg 216deg,
+                #0ea5e9 216deg 288deg,
+                #8b5cf6 288deg 360deg
+            );
+        }
+        .efficiency-ring {
+            background: conic-gradient(#0ea5e9 var(--percentage), #e5e7eb var(--percentage));
+            border-radius: 50%;
+            position: relative;
+        }
+        .smart-sensor {
+            position: relative;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            border-radius: 12px;
+            padding: 16px;
+            border: 2px solid #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .smart-sensor.online {
+            border-color: #22c55e;
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+        }
+        .smart-sensor.offline {
+            border-color: #ef4444;
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+        }
+        .water-flow-animation {
+            background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
+            animation: flow 2s linear infinite;
+        }
+        @keyframes flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .rainfall-chart {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
+        .consumption-chart {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        }
+        .ai-thinking {
+            background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .map-container {
+            height: 300px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-online {
+            background-color: #22c55e;
+            animation: pulse-dot 2s infinite;
+        }
+        .status-offline {
+            background-color: #ef4444;
+        }
+        .status-warning {
+            background-color: #f59e0b;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+        .water-tank {
+            background: linear-gradient(180deg, transparent var(--fill-level), #0ea5e9 var(--fill-level));
+            border: 3px solid #0284c7;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .irrigation-schedule-item {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border-left: 4px solid #0ea5e9;
+            transition: all 0.3s ease;
+        }
+        .irrigation-schedule-item:hover {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            transform: translateX(5px);
+        }
+        .weather-widget {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="ai-assistant.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">AI Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-primary font-semibold hover:text-secondary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="soil-analysis.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Soil Health Analysis</a>
+                            <a href="#" class="block px-4 py-2 text-primary font-semibold hover:bg-primary hover:text-white">Water Management</a>
+                            <a href="#pest-detection" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Pest Detection</a>
+                            <a href="#yield-prediction" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Yield Prediction</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <select id="languageSelector" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm pr-8 appearance-none">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇧🇷 Português</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="sw">🇰🇪 Kiswahili</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-2 top-2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Market Hub</a>
+                            <a href="ai-assistant.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">AI Assistant</a>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-primary font-semibold hover:text-secondary transition-colors mobile-dropdown-toggle">
+                            Services <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="soil-analysis.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Soil Health Analysis</a>
+                            <a href="#" class="block text-primary font-semibold">Water Management</a>
+                            <a href="#pest-detection" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Pest Detection</a>
+                            <a href="#yield-prediction" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Yield Prediction</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="water-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-tint mr-3"></i><span id="headerTitle">Smart Water Management</span>
+                </h1>
+                <p class="text-xl opacity-90 mb-6" id="headerDescription">AI-powered irrigation, real-time monitoring, and water conservation for sustainable farming</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">40%</div>
+                        <div class="text-sm opacity-75" id="savingsLabel">Water Savings</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75" id="monitoringLabel">Monitoring</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">Smart</div>
+                        <div class="text-sm opacity-75" id="automationLabel">Automation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Water Status Strip -->
+    <section class="weather-widget text-white py-4">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center text-sm">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="currentLocation">Detecting location...</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-cloud-rain"></i>
+                        <span id="rainfallToday">0 mm</span>
+                        <span id="rainfallLabel">today</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span id="currentTemp">--°C</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-tint"></i>
+                        <span id="humidity">--%</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-wind"></i>
+                        <span id="windSpeed">-- km/h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Dashboard -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Main Control Panel -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Water Overview Cards -->
+                    <div class="grid md:grid-cols-4 gap-6">
+                        <div class="water-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-water text-blue-600 text-xl"></i>
+                                </div>
+                                <span class="status-dot status-online"></span>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" id="waterUsageTitle">Water Usage</h3>
+                            <div class="text-2xl font-bold text-blue-600 mb-1" id="waterUsageAmount">2,450L</div>
+                            <div class="text-sm text-green-600" id="waterUsageChange">-15% from yesterday</div>
+                        </div>
+
+                        <div class="water-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-seedling text-green-600 text-xl"></i>
+                                </div>
+                                <span class="status-dot status-online"></span>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" id="irrigationTitle">Active Zones</h3>
+                            <div class="text-2xl font-bold text-green-600 mb-1">3/8</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-300" id="irrigationStatus">Currently irrigating</div>
+                        </div>
+
+                        <div class="water-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-orange-600 text-xl"></i>
+                                </div>
+                                <span class="status-dot status-warning"></span>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" id="alertsTitle">Alerts</h3>
+                            <div class="text-2xl font-bold text-orange-600 mb-1">2</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-300" id="alertsStatus">Low pressure detected</div>
+                        </div>
+
+                        <div class="water-card bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+                                </div>
+                                <span class="status-dot status-online"></span>
+                            </div>
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2" id="efficiencyTitle">Efficiency</h3>
+                            <div class="text-2xl font-bold text-purple-600 mb-1">87%</div>
+                            <div class="text-sm text-green-600" id="efficiencyChange">+5% this week</div>
+                        </div>
+                    </div>
+
+                    <!-- Irrigation Control Panel -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+                                <i class="fas fa-sprinkler text-water mr-2"></i><span id="irrigationControlTitle">Irrigation Control</span>
+                            </h2>
+                            <div class="flex space-x-3">
+                                <button id="autoMode" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                    <i class="fas fa-magic mr-2"></i><span id="autoModeText">Auto Mode</span>
+                                </button>
+                                <button id="manualMode" class="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors">
+                                    <i class="fas fa-hand-paper mr-2"></i><span id="manualModeText">Manual</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Irrigation Zones Grid -->
+                        <div class="grid md:grid-cols-4 gap-4 mb-6">
+                            <div class="irrigation-zone p-4 rounded-lg text-center" data-zone="1">
+                                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-leaf text-white text-xl"></i>
+                                </div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="zone1Label">Zone 1 - Tomatoes</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">Moisture: 45%</div>
+                                <button class="zone-toggle bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors" data-zone="1">
+                                    <i class="fas fa-play mr-1"></i><span id="startText">Start</span>
+                                </button>
+                            </div>
+
+                            <div class="irrigation-zone p-4 rounded-lg text-center active" data-zone="2">
+                                <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-corn text-white text-xl"></i>
+                                </div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="zone2Label">Zone 2 - Corn</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">Moisture: 25%</div>
+                                <button class="zone-toggle bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors" data-zone="2">
+                                    <i class="fas fa-stop mr-1"></i><span id="stopText">Stop</span>
+                                </button>
+                            </div>
+
+                            <div class="irrigation-zone p-4 rounded-lg text-center" data-zone="3">
+                                <div class="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-wheat text-white text-xl"></i>
+                                </div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="zone3Label">Zone 3 - Wheat</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">Moisture: 60%</div>
+                                <button class="zone-toggle bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors" data-zone="3">
+                                    <i class="fas fa-play mr-1"></i><span id="startText">Start</span>
+                                </button>
+                            </div>
+
+                            <div class="irrigation-zone p-4 rounded-lg text-center active" data-zone="4">
+                                <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-apple-alt text-white text-xl"></i>
+                                </div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="zone4Label">Zone 4 - Fruits</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-300 mb-2">Moisture: 35%</div>
+                                <button class="zone-toggle bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors" data-zone="4">
+                                    <i class="fas fa-stop mr-1"></i><span id="stopText">Stop</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Global Controls -->
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <button id="startAllZones" class="bg-green-500 text-white p-4 rounded-lg hover:bg-green-600 transition-colors">
+                                <i class="fas fa-play-circle text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="startAllText">Start All Zones</h3>
+                            </button>
+                            <button id="stopAllZones" class="bg-red-500 text-white p-4 rounded-lg hover:bg-red-600 transition-colors">
+                                <i class="fas fa-stop-circle text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="stopAllText">Stop All Zones</h3>
+                            </button>
+                            <button id="emergencyShutoff" class="bg-orange-500 text-white p-4 rounded-lg hover:bg-orange-600 transition-colors">
+                                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="emergencyText">Emergency Stop</h3>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Dashboard -->
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <!-- Water Usage Chart -->
+                        <div class="consumption-chart rounded-2xl shadow-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                                <i class="fas fa-chart-area text-water mr-2"></i><span id="usageChartTitle">Water Usage (7 Days)</span>
+                            </h3>
+                            <canvas id="waterUsageChart" class="w-full h-64"></canvas>
+                        </div>
+
+                        <!-- Rainfall Prediction -->
+                        <div class="rainfall-chart rounded-2xl shadow-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                                <i class="fas fa-cloud-rain text-water mr-2"></i><span id="rainfallChartTitle">Rainfall Forecast</span>
+                            </h3>
+                            <canvas id="rainfallChart" class="w-full h-64"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Water Quality Monitoring -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-vial text-water mr-2"></i><span id="waterQualityTitle">Water Quality Monitoring</span>
+                        </h2>
+                        
+                        <div class="grid md:grid-cols-4 gap-6">
+                            <div class="text-center">
+                                <div class="w-20 h-20 water-quality-meter rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div class="w-16 h-16 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="text-lg font-bold text-gray-800 dark:text-white">7.2</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">pH</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-green-600 font-semibold" id="phStatus">Optimal</div>
+                            </div>
+
+                            <div class="text-center">
+                                <div class="w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold text-blue-600">350</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">PPM</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-green-600 font-semibold" id="tdsStatus">Good</div>
+                            </div>
+
+                            <div class="text-center">
+                                <div class="w-20 h-20 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold text-purple-600">22°C</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400" id="tempLabel">Temp</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-green-600 font-semibold" id="tempStatus">Normal</div>
+                            </div>
+
+                            <div class="text-center">
+                                <div class="w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <div class="text-center">
+                                        <div class="text-lg font-bold text-green-600">8.5</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">DO</div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-green-600 font-semibold" id="doStatus">Excellent</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Water Tank Status -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-archive text-water mr-2"></i><span id="tankStatusTitle">Tank Status</span>
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div class="text-center">
+                                <div class="w-24 h-32 water-tank mx-auto mb-3" style="--fill-level: 25%;">
+                                    <div class="water-wave"></div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-white font-bold">75%</div>
+                                    </div>
+                                </div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white" id="mainTankLabel">Main Tank</h4>
+                                <div class="text-sm text-gray-600 dark:text-gray-300">7,500L / 10,000L</div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-300" id="reserveTankLabel">Reserve Tank</span>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-white">2,800L</span>
+                                </div>
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div class="bg-blue-500 h-2 rounded-full" style="width: 56%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600 dark:text-gray-300" id="emergencyTankLabel">Emergency Tank</span>
+                                    <span class="text-sm font-semibold text-gray-800 dark:text-white">1,200L</span>
+                                </div>
+                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div class="bg-orange-500 h-2 rounded-full" style="width: 24%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scheduled Irrigation -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">
+                                <i class="fas fa-calendar-alt text-water mr-2"></i><span id="scheduleTitle">Today's Schedule</span>
+                            </h3>
+                            <button id="addSchedule" class="text-water hover:text-blue-700 transition-colors">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-3">
+                            <div class="irrigation-schedule-item p-3 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white">06:00 AM</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300" id="morningSchedule">Zones 1,2,3 - 30 min</div>
+                                    </div>
+                                    <div class="text-green-600">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="irrigation-schedule-item p-3 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white">02:00 PM</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300" id="afternoonSchedule">Zone 4 - 45 min</div>
+                                    </div>
+                                    <div class="text-blue-600">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="irrigation-schedule-item p-3 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white">07:00 PM</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300" id="eveningSchedule">All Zones - 20 min</div>
+                                    </div>
+                                    <div class="text-gray-400">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Smart Sensors -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-satellite-dish text-water mr-2"></i><span id="sensorsTitle">Smart Sensors</span>
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div class="smart-sensor online">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white" id="soilMoisture1">Soil Moisture #1</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300">45% - Zone 1</div>
+                                    </div>
+                                    <div class="text-green-600">
+                                        <i class="fas fa-wifi"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="smart-sensor online">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white" id="weatherStation">Weather Station</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300">24°C, 65% RH</div>
+                                    </div>
+                                    <div class="text-green-600">
+                                        <i class="fas fa-wifi"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="smart-sensor offline">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white" id="flowMeter">Flow Meter #2</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300" id="offline">Offline - 2 hours</div>
+                                    </div>
+                                    <div class="text-red-600">
+                                        <i class="fas fa-wifi-slash"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="smart-sensor online">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <div class="font-semibold text-gray-800 dark:text-white" id="pressureSensor">Pressure Sensor</div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-300">2.3 bar</div>
+                                    </div>
+                                    <div class="text-green-600">
+                                        <i class="fas fa-wifi"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Water Map -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-map text-water mr-2"></i><span id="waterMapTitle">Farm Water Map</span>
+                        </h3>
+                        <div id="waterMap" class="map-container"></div>
+                        <div class="mt-4 text-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-gray-600 dark:text-gray-300" id="totalAreaLabel">Total Area:</span>
+                                <span class="font-semibold text-gray-800 dark:text-white">25.4 hectares</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-300" id="irrigatedAreaLabel">Irrigated:</span>
+                                <span class="font-semibold text-green-600">18.7 hectares</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-bolt text-water mr-2"></i><span id="quickActionsTitle">Quick Actions</span>
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <button id="waterAI" class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left">
+                                <i class="fas fa-robot mr-2"></i><span id="waterAIText">Water AI Assistant</span>
+                            </button>
+                            <button id="droughtAlert" class="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 p-3 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors text-left">
+                                <i class="fas fa-exclamation-triangle mr-2"></i><span id="droughtAlertText">Drought Alerts</span>
+                            </button>
+                            <button id="conservationTips" class="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-left">
+                                <i class="fas fa-leaf mr-2"></i><span id="conservationText">Conservation Tips</span>
+                            </button>
+                            <button id="systemDiagnostics" class="w-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors text-left">
+                                <i class="fas fa-cogs mr-2"></i><span id="diagnosticsText">System Diagnostics</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Water AI Assistant Modal -->
+    <div id="waterAIModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] mx-4 flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-robot text-water mr-2"></i><span id="aiChatTitle">Water Management AI</span>
+                </h2>
+                <button id="closeAIModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 bg-water rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p id="aiWelcomeMessage" class="text-gray-800 dark:text-white text-sm">Hello! I'm your water management specialist. I can help optimize irrigation, monitor water quality, and provide conservation recommendations. What would you like to know?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex space-x-2">
+                    <input type="text" id="aiChatInput" placeholder="Ask about water management..." 
+                           class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-water dark:bg-gray-700 dark:text-white text-base">
+                    <button id="sendAIMessage" class="bg-water text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div id="scheduleModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full mx-4">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white" id="addScheduleTitle">Add Irrigation Schedule</h2>
+                <button id="closeScheduleModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="timeLabel">Time</label>
+                    <input type="time" id="scheduleTime" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-water dark:bg-gray-700 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="zonesLabel">Zones</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" value="1">
+                            <span class="text-gray-700 dark:text-gray-300">Zone 1 - Tomatoes</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" value="2">
+                            <span class="text-gray-700 dark:text-gray-300">Zone 2 - Corn</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" value="3">
+                            <span class="text-gray-700 dark:text-gray-300">Zone 3 - Wheat</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" value="4">
+                            <span class="text-gray-700 dark:text-gray-300">Zone 4 - Fruits</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="durationLabel">Duration (minutes)</label>
+                    <input type="number" id="scheduleDuration" placeholder="30" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-water dark:bg-gray-700 dark:text-white">
+                </div>
+                <button id="saveSchedule" class="w-full bg-water text-white py-2 rounded hover:bg-blue-600 transition-colors">
+                    <span id="saveScheduleText">Save Schedule</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered climate-smart solutions and intelligent water management for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">API Documentation</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Support Center</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-TECH</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Cookie Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Data Protection</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentLanguage = 'en';
+        let currentLocation = null;
+        let weatherData = null;
+        let waterData = null;
+        let map = null;
+        let isAIResponding = false;
+        let irrigationZones = {
+            1: { active: false, moisture: 45, crop: 'Tomatoes' },
+            2: { active: true, moisture: 25, crop: 'Corn' },
+            3: { active: false, moisture: 60, crop: 'Wheat' },
+            4: { active: true, moisture: 35, crop: 'Fruits' }
+        };
+
+        // API Configuration
+        const API_CONFIG = {
+            WEATHER_API_KEY: 'your-weather-api-key', // Replace with actual API key
+            OPENWEATHER_URL: 'https://api.openweathermap.org/data/2.5',
+            WATER_QUALITY_API: 'https://api.waterquality.gov/v1',
+            IRRIGATION_API: 'https://api.irrigation-systems.com/v2',
+            DROUGHT_MONITOR_API: 'https://api.drought.gov/v1'
+        };
+
+        // Language configurations for multilingual support
+        const languageConfig = {
+            en: {
+                headerTitle: 'Smart Water Management',
+                headerDescription: 'AI-powered irrigation, real-time monitoring, and water conservation for sustainable farming',
+                savingsLabel: 'Water Savings',
+                monitoringLabel: 'Monitoring',
+                automationLabel: 'Automation',
+                rainfallLabel: 'today',
+                waterUsageTitle: 'Water Usage',
+                irrigationTitle: 'Active Zones',
+                irrigationStatus: 'Currently irrigating',
+                alertsTitle: 'Alerts',
+                alertsStatus: 'Low pressure detected',
+                efficiencyTitle: 'Efficiency',
+                efficiencyChange: '+5% this week',
+                irrigationControlTitle: 'Irrigation Control',
+                autoModeText: 'Auto Mode',
+                manualModeText: 'Manual',
+                zone1Label: 'Zone 1 - Tomatoes',
+                zone2Label: 'Zone 2 - Corn',
+                zone3Label: 'Zone 3 - Wheat',
+                zone4Label: 'Zone 4 - Fruits',
+                startText: 'Start',
+                stopText: 'Stop',
+                startAllText: 'Start All Zones',
+                stopAllText: 'Stop All Zones',
+                emergencyText: 'Emergency Stop',
+                usageChartTitle: 'Water Usage (7 Days)',
+                rainfallChartTitle: 'Rainfall Forecast',
+                waterQualityTitle: 'Water Quality Monitoring',
+                phStatus: 'Optimal',
+                tdsStatus: 'Good',
+                tempLabel: 'Temp',
+                tempStatus: 'Normal',
+                doStatus: 'Excellent',
+                tankStatusTitle: 'Tank Status',
+                mainTankLabel: 'Main Tank',
+                reserveTankLabel: 'Reserve Tank',
+                emergencyTankLabel: 'Emergency Tank',
+                scheduleTitle: 'Today\'s Schedule',
+                morningSchedule: 'Zones 1,2,3 - 30 min',
+                afternoonSchedule: 'Zone 4 - 45 min',
+                eveningSchedule: 'All Zones - 20 min',
+                sensorsTitle: 'Smart Sensors',
+                soilMoisture1: 'Soil Moisture #1',
+                weatherStation: 'Weather Station',
+                flowMeter: 'Flow Meter #2',
+                offline: 'Offline - 2 hours',
+                pressureSensor: 'Pressure Sensor',
+                waterMapTitle: 'Farm Water Map',
+                totalAreaLabel: 'Total Area:',
+                irrigatedAreaLabel: 'Irrigated:',
+                quickActionsTitle: 'Quick Actions',
+                waterAIText: 'Water AI Assistant',
+                droughtAlertText: 'Drought Alerts',
+                conservationText: 'Conservation Tips',
+                diagnosticsText: 'System Diagnostics',
+                aiChatTitle: 'Water Management AI',
+                aiWelcomeMessage: 'Hello! I\'m your water management specialist. I can help optimize irrigation, monitor water quality, and provide conservation recommendations. What would you like to know?',
+                addScheduleTitle: 'Add Irrigation Schedule',
+                timeLabel: 'Time',
+                zonesLabel: 'Zones',
+                durationLabel: 'Duration (minutes)',
+                saveScheduleText: 'Save Schedule'
+            },
+            es: {
+                headerTitle: 'Gestión Inteligente del Agua',
+                headerDescription: 'Riego impulsado por IA, monitoreo en tiempo real y conservación del agua para agricultura sostenible',
+                savingsLabel: 'Ahorro de Agua',
+                monitoringLabel: 'Monitoreo',
+                automationLabel: 'Automatización',
+                rainfallLabel: 'hoy',
+                waterUsageTitle: 'Uso del Agua',
+                irrigationTitle: 'Zonas Activas',
+                irrigationStatus: 'Regando actualmente',
+                alertsTitle: 'Alertas',
+                alertsStatus: 'Baja presión detectada',
+                efficiencyTitle: 'Eficiencia',
+                efficiencyChange: '+5% esta semana',
+                irrigationControlTitle: 'Control de Riego',
+                autoModeText: 'Modo Automático',
+                manualModeText: 'Manual',
+                zone1Label: 'Zona 1 - Tomates',
+                zone2Label: 'Zona 2 - Maíz',
+                zone3Label: 'Zona 3 - Trigo',
+                zone4Label: 'Zona 4 - Frutas',
+                startText: 'Iniciar',
+                stopText: 'Parar',
+                startAllText: 'Iniciar Todas las Zonas',
+                stopAllText: 'Parar Todas las Zonas',
+                emergencyText: 'Parada de Emergencia',
+                usageChartTitle: 'Uso del Agua (7 Días)',
+                rainfallChartTitle: 'Pronóstico de Lluvia',
+                waterQualityTitle: 'Monitoreo de Calidad del Agua',
+                phStatus: 'Óptimo',
+                tdsStatus: 'Bueno',
+                tempLabel: 'Temp',
+                tempStatus: 'Normal',
+                doStatus: 'Excelente',
+                tankStatusTitle: 'Estado del Tanque',
+                mainTankLabel: 'Tanque Principal',
+                reserveTankLabel: 'Tanque de Reserva',
+                emergencyTankLabel: 'Tanque de Emergencia',
+                scheduleTitle: 'Horario de Hoy',
+                morningSchedule: 'Zonas 1,2,3 - 30 min',
+                afternoonSchedule: 'Zona 4 - 45 min',
+                eveningSchedule: 'Todas las Zonas - 20 min',
+                sensorsTitle: 'Sensores Inteligentes',
+                soilMoisture1: 'Humedad del Suelo #1',
+                weatherStation: 'Estación Meteorológica',
+                flowMeter: 'Medidor de Flujo #2',
+                offline: 'Fuera de línea - 2 horas',
+                pressureSensor: 'Sensor de Presión',
+                waterMapTitle: 'Mapa de Agua de la Granja',
+                totalAreaLabel: 'Área Total:',
+                irrigatedAreaLabel: 'Irrigado:',
+                quickActionsTitle: 'Acciones Rápidas',
+                waterAIText: 'Asistente IA del Agua',
+                droughtAlertText: 'Alertas de Sequía',
+                conservationText: 'Consejos de Conservación',
+                diagnosticsText: 'Diagnósticos del Sistema',
+                aiChatTitle: 'IA de Gestión del Agua',
+                aiWelcomeMessage: '¡Hola! Soy tu especialista en gestión del agua. Puedo ayudar a optimizar el riego, monitorear la calidad del agua y proporcionar recomendaciones de conservación. ¿Qué te gustaría saber?',
+                addScheduleTitle: 'Agregar Horario de Riego',
+                timeLabel: 'Hora',
+                zonesLabel: 'Zonas',
+                durationLabel: 'Duración (minutos)',
+                saveScheduleText: 'Guardar Horario'
+            },
+            fr: {
+                headerTitle: 'Gestion Intelligente de l\'Eau',
+                headerDescription: 'Irrigation alimentée par IA, surveillance en temps réel et conservation de l\'eau pour une agriculture durable',
+                savingsLabel: 'Économies d\'Eau',
+                monitoringLabel: 'Surveillance',
+                automationLabel: 'Automatisation',
+                rainfallLabel: 'aujourd\'hui',
+                waterUsageTitle: 'Utilisation de l\'Eau',
+                irrigationTitle: 'Zones Actives',
+                irrigationStatus: 'Irrigation en cours',
+                alertsTitle: 'Alertes',
+                alertsStatus: 'Basse pression détectée',
+                efficiencyTitle: 'Efficacité',
+                efficiencyChange: '+5% cette semaine',
+                irrigationControlTitle: 'Contrôle d\'Irrigation',
+                autoModeText: 'Mode Auto',
+                manualModeText: 'Manuel',
+                zone1Label: 'Zone 1 - Tomates',
+                zone2Label: 'Zone 2 - Maïs',
+                zone3Label: 'Zone 3 - Blé',
+                zone4Label: 'Zone 4 - Fruits',
+                startText: 'Démarrer',
+                stopText: 'Arrêter',
+                startAllText: 'Démarrer Toutes les Zones',
+                stopAllText: 'Arrêter Toutes les Zones',
+                emergencyText: 'Arrêt d\'Urgence',
+                usageChartTitle: 'Utilisation de l\'Eau (7 Jours)',
+                rainfallChartTitle: 'Prévisions de Pluie',
+                waterQualityTitle: 'Surveillance de la Qualité de l\'Eau',
+                phStatus: 'Optimal',
+                tdsStatus: 'Bon',
+                tempLabel: 'Temp',
+                tempStatus: 'Normal',
+                doStatus: 'Excellent',
+                tankStatusTitle: 'État du Réservoir',
+                mainTankLabel: 'Réservoir Principal',
+                reserveTankLabel: 'Réservoir de Réserve',
+                emergencyTankLabel: 'Réservoir d\'Urgence',
+                scheduleTitle: 'Programme d\'Aujourd\'hui',
+                morningSchedule: 'Zones 1,2,3 - 30 min',
+                afternoonSchedule: 'Zone 4 - 45 min',
+                eveningSchedule: 'Toutes les Zones - 20 min',
+                sensorsTitle: 'Capteurs Intelligents',
+                soilMoisture1: 'Humidité du Sol #1',
+                weatherStation: 'Station Météo',
+                flowMeter: 'Débitmètre #2',
+                offline: 'Hors ligne - 2 heures',
+                pressureSensor: 'Capteur de Pression',
+                waterMapTitle: 'Carte de l\'Eau de la Ferme',
+                totalAreaLabel: 'Surface Totale:',
+                irrigatedAreaLabel: 'Irrigué:',
+                quickActionsTitle: 'Actions Rapides',
+                waterAIText: 'Assistant IA de l\'Eau',
+                droughtAlertText: 'Alertes de Sécheresse',
+                conservationText: 'Conseils de Conservation',
+                diagnosticsText: 'Diagnostics du Système',
+                aiChatTitle: 'IA de Gestion de l\'Eau',
+                aiWelcomeMessage: 'Bonjour! Je suis votre spécialiste en gestion de l\'eau. Je peux aider à optimiser l\'irrigation, surveiller la qualité de l\'eau et fournir des recommandations de conservation. Que souhaitez-vous savoir?',
+                addScheduleTitle: 'Ajouter un Horaire d\'Irrigation',
+                timeLabel: 'Heure',
+                zonesLabel: 'Zones',
+                durationLabel: 'Durée (minutes)',
+                saveScheduleText: 'Sauvegarder l\'Horaire'
+            },
+            sw: {
+                headerTitle: 'Usimamizi wa Maji wa Kisasa',
+                headerDescription: 'Umwagiliaji unaongozwa na AI, ufuatiliaji wa muda halisi, na uhifadhi wa maji kwa kilimo endelevu',
+                savingsLabel: 'Akiba za Maji',
+                monitoringLabel: 'Ufuatiliaji',
+                automationLabel: 'Utendaji wa Kiotomatiki',
+                rainfallLabel: 'leo',
+                waterUsageTitle: 'Matumizi ya Maji',
+                irrigationTitle: 'Maeneo Yanayofanya Kazi',
+                irrigationStatus: 'Kunyunyizia sasa',
+                alertsTitle: 'Tahadhari',
+                alertsStatus: 'Shinikizo dogo limegunduliwa',
+                efficiencyTitle: 'Ufanisi',
+                efficiencyChange: '+5% wiki hii',
+                irrigationControlTitle: 'Udhibiti wa Umwagiliaji',
+                autoModeText: 'Hali ya Kiotomatiki',
+                manualModeText: 'Hali ya Mkono',
+                zone1Label: 'Eneo 1 - Nyanya',
+                zone2Label: 'Eneo 2 - Mahindi',
+                zone3Label: 'Eneo 3 - Ngano',
+                zone4Label: 'Eneo 4 - Matunda',
+                startText: 'Anza',
+                stopText: 'Simama',
+                startAllText: 'Anza Maeneo Yote',
+                stopAllText: 'Simamisha Maeneo Yote',
+                emergencyText: 'Kusimamisha kwa Dharura',
+                usageChartTitle: 'Matumizi ya Maji (Siku 7)',
+                rainfallChartTitle: 'Utabiri wa Mvua',
+                waterQualityTitle: 'Ufuatiliaji wa Ubora wa Maji',
+                phStatus: 'Bora',
+                tdsStatus: 'Nzuri',
+                tempLabel: 'Joto',
+                tempStatus: 'Kawaida',
+                doStatus: 'Bora Sana',
+                tankStatusTitle: 'Hali ya Tanki',
+                mainTankLabel: 'Tanki Kuu',
+                reserveTankLabel: 'Tanki la Akiba',
+                emergencyTankLabel: 'Tanki la Dharura',
+                scheduleTitle: 'Ratiba ya Leo',
+                morningSchedule: 'Maeneo 1,2,3 - dakika 30',
+                afternoonSchedule: 'Eneo 4 - dakika 45',
+                eveningSchedule: 'Maeneo Yote - dakika 20',
+                sensorsTitle: 'Vipimaji Mahiri',
+                soilMoisture1: 'Unyevu wa Udongo #1',
+                weatherStation: 'Kituo cha Hali ya Hewa',
+                flowMeter: 'Kipimamtiririko #2',
+                offline: 'Nje ya mtandao - masaa 2',
+                pressureSensor: 'Kipimashirikizo',
+                waterMapTitle: 'Ramani ya Maji ya Shamba',
+                totalAreaLabel: 'Eneo Lote:',
+                irrigatedAreaLabel: 'Linalonyunyiziwa:',
+                quickActionsTitle: 'Vitendo vya Haraka',
+                waterAIText: 'Msaidizi wa AI wa Maji',
+                droughtAlertText: 'Tahadhari za Ukame',
+                conservationText: 'Ushauri wa Uhifadhi',
+                diagnosticsText: 'Uchunguzi wa Mfumo',
+                aiChatTitle: 'AI ya Usimamizi wa Maji',
+                aiWelcomeMessage: 'Habari! Mimi ni mtaalamu wako wa usimamizi wa maji. Ninaweza kusaidia kuboresha umwagiliaji, kufuatilia ubora wa maji, na kutoa mapendekezo ya uhifadhi. Ungependa kujua nini?',
+                addScheduleTitle: 'Ongeza Ratiba ya Umwagiliaji',
+                timeLabel: 'Muda',
+                zonesLabel: 'Maeneo',
+                durationLabel: 'Muda (dakika)',
+                saveScheduleText: 'Hifadhi Ratiba'
+            },
+            hi: {
+                headerTitle: 'स्मार्ट जल प्रबंधन',
+                headerDescription: 'AI-संचालित सिंचाई, वास्तविक समय निगरानी, और टिकाऊ खेती के लिए जल संरक्षण',
+                savingsLabel: 'जल बचत',
+                monitoringLabel: 'निगरानी',
+                automationLabel: 'स्वचालन',
+                rainfallLabel: 'आज',
+                waterUsageTitle: 'जल उपयोग',
+                irrigationTitle: 'सक्रिय क्षेत्र',
+                irrigationStatus: 'वर्तमान में सिंचाई',
+                alertsTitle: 'अलर्ट',
+                alertsStatus: 'कम दबाव का पता चला',
+                efficiencyTitle: 'दक्षता',
+                efficiencyChange: '+5% इस सप्ताह',
+                irrigationControlTitle: 'सिंचाई नियंत्रण',
+                autoModeText: 'ऑटो मोड',
+                manualModeText: 'मैनुअल',
+                zone1Label: 'क्षेत्र 1 - टमाटर',
+                zone2Label: 'क्षेत्र 2 - मक्का',
+                zone3Label: 'क्षेत्र 3 - गेहूं',
+                zone4Label: 'क्षेत्र 4 - फल',
+                startText: 'शुरू',
+                stopText: 'रोकें',
+                startAllText: 'सभी क्षेत्र शुरू करें',
+                stopAllText: 'सभी क्षेत्र रोकें',
+                emergencyText: 'आपातकालीन रोक',
+                usageChartTitle: 'जल उपयोग (7 दिन)',
+                rainfallChartTitle: 'वर्षा पूर्वानुमान',
+                waterQualityTitle: 'जल गुणवत्ता निगरानी',
+                phStatus: 'इष्टतम',
+                tdsStatus: 'अच्छा',
+                tempLabel: 'तापमान',
+                tempStatus: 'सामान्य',
+                doStatus: 'उत्कृष्ट',
+                tankStatusTitle: 'टैंक स्थिति',
+                mainTankLabel: 'मुख्य टैंक',
+                reserveTankLabel: 'रिजर्व टैंक',
+                emergencyTankLabel: 'आपातकालीन टैंक',
+                scheduleTitle: 'आज का कार्यक्रम',
+                morningSchedule: 'क्षेत्र 1,2,3 - 30 मिनट',
+                afternoonSchedule: 'क्षेत्र 4 - 45 मिनट',
+                eveningSchedule: 'सभी क्षेत्र - 20 मिनट',
+                sensorsTitle: 'स्मार्ट सेंसर',
+                soilMoisture1: 'मिट्टी की नमी #1',
+                weatherStation: 'मौसम स्टेशन',
+                flowMeter: 'फ्लो मीटर #2',
+                offline: 'ऑफलाइन - 2 घंटे',
+                pressureSensor: 'दबाव सेंसर',
+                waterMapTitle: 'फार्म वाटर मैप',
+                totalAreaLabel: 'कुल क्षेत्र:',
+                irrigatedAreaLabel: 'सिंचित:',
+                quickActionsTitle: 'त्वरित क्रियाएं',
+                waterAIText: 'वाटर AI असिस्टेंट',
+                droughtAlertText: 'सूखा अलर्ट',
+                conservationText: 'संरक्षण सुझाव',
+                diagnosticsText: 'सिस्टम डायग्नोस्टिक्स',
+                aiChatTitle: 'जल प्रबंधन AI',
+                aiWelcomeMessage: 'नमस्ते! मैं आपका जल प्रबंधन विशेषज्ञ हूं। मैं सिंचाई को अनुकूलित करने, जल गुणवत्ता की निगरानी करने और संरक्षण सिफारिशें प्रदान करने में मदद कर सकता हूं। आप क्या जानना चाहेंगे?',
+                addScheduleTitle: 'सिंचाई कार्यक्रम जोड़ें',
+                timeLabel: 'समय',
+                zonesLabel: 'क्षेत्र',
+                durationLabel: 'अवधि (मिनट)',
+                saveScheduleText: 'कार्यक्रम सहेजें'
+            },
+            ar: {
+                headerTitle: 'إدارة المياه الذكية',
+                headerDescription: 'الري المدعوم بالذكاء الاصطناعي والمراقبة في الوقت الفعلي وحفظ المياه للزراعة المستدامة',
+                savingsLabel: 'توفير المياه',
+                monitoringLabel: 'المراقبة',
+                automationLabel: 'الأتمتة',
+                rainfallLabel: 'اليوم',
+                waterUsageTitle: 'استخدام المياه',
+                irrigationTitle: 'المناطق النشطة',
+                irrigationStatus: 'يتم الري حالياً',
+                alertsTitle: 'التنبيهات',
+                alertsStatus: 'انخفاض الضغط المكتشف',
+                efficiencyTitle: 'الكفاءة',
+                efficiencyChange: '+5% هذا الأسبوع',
+                irrigationControlTitle: 'التحكم في الري',
+                autoModeText: 'الوضع التلقائي',
+                manualModeText: 'يدوي',
+                zone1Label: 'المنطقة 1 - الطماطم',
+                zone2Label: 'المنطقة 2 - الذرة',
+                zone3Label: 'المنطقة 3 - القمح',
+                zone4Label: 'المنطقة 4 - الفواكه',
+                startText: 'ابدأ',
+                stopText: 'توقف',
+                startAllText: 'بدء جميع المناطق',
+                stopAllText: 'إيقاف جميع المناطق',
+                emergencyText: 'إيقاف الطوارئ',
+                usageChartTitle: 'استخدام المياه (7 أيام)',
+                rainfallChartTitle: 'توقعات الأمطار',
+                waterQualityTitle: 'مراقبة جودة المياه',
+                phStatus: 'مثالي',
+                tdsStatus: 'جيد',
+                tempLabel: 'درجة الحرارة',
+                tempStatus: 'طبيعي',
+                doStatus: 'ممتاز',
+                tankStatusTitle: 'حالة الخزان',
+                mainTankLabel: 'الخزان الرئيسي',
+                reserveTankLabel: 'خزان الاحتياط',
+                emergencyTankLabel: 'خزان الطوارئ',
+                scheduleTitle: 'جدول اليوم',
+                morningSchedule: 'المناطق 1،2،3 - 30 دقيقة',
+                afternoonSchedule: 'المنطقة 4 - 45 دقيقة',
+                eveningSchedule: 'جميع المناطق - 20 دقيقة',
+                sensorsTitle: 'أجهزة الاستشعار الذكية',
+                soilMoisture1: 'رطوبة التربة #1',
+                weatherStation: 'محطة الطقس',
+                flowMeter: 'مقياس التدفق #2',
+                offline: 'غير متصل - ساعتان',
+                pressureSensor: 'مستشعر الضغط',
+                waterMapTitle: 'خريطة مياه المزرعة',
+                totalAreaLabel: 'المساحة الإجمالية:',
+                irrigatedAreaLabel: 'مروي:',
+                quickActionsTitle: 'إجراءات سريعة',
+                waterAIText: 'مساعد الذكاء الاصطناعي للمياه',
+                droughtAlertText: 'تنبيهات الجفاف',
+                conservationText: 'نصائح الحفظ',
+                diagnosticsText: 'تشخيص النظام',
+                aiChatTitle: 'الذكاء الاصطناعي لإدارة المياه',
+                aiWelcomeMessage: 'مرحباً! أنا أخصائي إدارة المياه الخاص بك. يمكنني المساعدة في تحسين الري ومراقبة جودة المياه وتقديم توصيات الحفظ. ماذا تريد أن تعرف؟',
+                addScheduleTitle: 'إضافة جدول الري',
+                timeLabel: 'الوقت',
+                zonesLabel: 'المناطق',
+                durationLabel: 'المدة (دقائق)',
+                saveScheduleText: 'حفظ الجدول'
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializeGeolocation();
+            initializeWeatherData();
+            initializePoeAPI();
+            setupEventListeners();
+            initializeMap();
+            updateLanguageInterface();
+            generateCharts();
+            startWaterMonitoring();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI water management
+        function initializePoeAPI() {
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('water-ai-handler', handleWaterAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe
+        function handleWaterAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    updateAIChatMessage(aiMessage.content);
+                } else if (aiMessage.status === 'complete') {
+                    finalizeAIChatMessage(aiMessage.content);
+                    isAIResponding = false;
+                } else if (aiMessage.status === 'error') {
+                    showAIError();
+                    isAIResponding = false;
+                }
+            }
+        }
+
+        // Send water data to AI for analysis
+        async function sendWaterDataToAI(userMessage) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            addAIChatMessage(userMessage, true);
+            showAIThinking();
+            
+            const contextPrompt = buildWaterAnalysisPrompt(userMessage);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'water-ai-handler',
+                        stream: true,
+                        openChat: false
+                    });
+                } else {
+                    // Fallback to local response
+                    setTimeout(() => {
+                        const response = getLocalWaterResponse(userMessage);
+                        finalizeAIChatMessage(response);
+                        isAIResponding = false;
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('Water AI error:', error);
+                showAIError();
+                isAIResponding = false;
+            }
+        }
+
+        // Build water management AI prompt
+        function buildWaterAnalysisPrompt(userMessage) {
+            const waterContext = waterData ? `Current water system data: ${JSON.stringify(waterData, null, 2)}` : '';
+            const weatherContext = weatherData ? `Current weather: Temperature: ${weatherData.temperature}°C, Humidity: ${weatherData.humidity}%, Precipitation: ${weatherData.precipitation}mm` : '';
+            const irrigationContext = `Current irrigation zones: ${JSON.stringify(irrigationZones, null, 2)}`;
+            
+            const systemPrompt = `You are an expert water management and irrigation specialist with expertise in:
+- Smart irrigation systems and automation
+- Water conservation and efficiency optimization
+- Soil moisture management and crop water requirements
+- Water quality monitoring and treatment
+- Drought management and mitigation strategies
+- Climate-smart water management practices
+- Precision agriculture and sensor-based irrigation
+
+Current Context:
+${waterContext}
+${weatherContext}
+${irrigationContext}
+
+Analysis Guidelines:
+1. Provide practical water management recommendations
+2. Consider current weather conditions and irrigation status
+3. Suggest water conservation strategies
+4. Analyze irrigation efficiency and optimization opportunities
+5. Address water quality concerns if mentioned
+6. Provide specific, actionable advice with measurements and timelines
+7. Consider crop-specific water requirements
+8. Suggest technology solutions for better water management
+
+Language: Respond in ${languageConfig[currentLanguage] ? Object.keys(languageConfig).find(key => key === currentLanguage) : 'English'}
+
+User question: ${userMessage}
+
+Provide expert water management guidance:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Local water response fallback
+        function getLocalWaterResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+                return languageConfig[currentLanguage]?.aiWelcomeMessage || languageConfig.en.aiWelcomeMessage;
+            }
+            
+            if (lowerMessage.includes('irrigation') || lowerMessage.includes('watering')) {
+                return "Based on your current soil moisture levels, I recommend adjusting irrigation schedules. Zone 2 shows 25% moisture and needs immediate attention. Consider watering for 30 minutes every 2 days.";
+            }
+            
+            if (lowerMessage.includes('water quality') || lowerMessage.includes('ph')) {
+                return "Your water quality readings show pH 7.2 which is optimal for most crops. TDS at 350 PPM is within good range. I recommend testing monthly and adjusting fertilizer ratios accordingly.";
+            }
+            
+            if (lowerMessage.includes('conservation') || lowerMessage.includes('save water')) {
+                return "Here are key water conservation strategies: 1) Use drip irrigation to reduce usage by 40%, 2) Install soil moisture sensors for precise watering, 3) Apply mulch to reduce evaporation, 4) Schedule irrigation during early morning hours.";
+            }
+            
+            if (lowerMessage.includes('drought') || lowerMessage.includes('dry')) {
+                return "For drought preparation: 1) Install water storage tanks, 2) Implement deficit irrigation strategies, 3) Choose drought-resistant crop varieties, 4) Use moisture-retaining soil amendments like compost.";
+            }
+            
+            return "I can help with irrigation scheduling, water quality management, conservation strategies, and system optimization. What specific water management challenge would you like assistance with?";
+        }
+
+        // Initialize geolocation
+        function initializeGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                        updateMapLocation();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        // Use default location
+                        currentLocation = { latitude: -1.2921, longitude: 36.8219 }; // Nairobi
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                    }
+                );
+            }
+        }
+
+        // Fetch weather data from API
+        async function fetchWeatherData() {
+            if (!currentLocation) return;
+            
+            try {
+                // In production, use real API key
+                const weatherResponse = await fetch(
+                    `${API_CONFIG.OPENWEATHER_URL}/weather?lat=${currentLocation.latitude}&lon=${currentLocation.longitude}&appid=${API_CONFIG.WEATHER_API_KEY}&units=metric`
+                );
+                
+                if (weatherResponse.ok) {
+                    const data = await weatherResponse.json();
+                    weatherData = {
+                        temperature: data.main.temp,
+                        humidity: data.main.humidity,
+                        precipitation: data.rain ? data.rain['1h'] || 0 : 0,
+                        windSpeed: data.wind.speed * 3.6, // Convert m/s to km/h
+                        description: data.weather[0].description
+                    };
+                    
+                    updateWeatherDisplay();
+                } else {
+                    // Use demo data
+                    useDefaultWeatherData();
+                }
+            } catch (error) {
+                console.error('Weather API error:', error);
+                useDefaultWeatherData();
+            }
+        }
+
+        // Use default weather data when API fails
+        function useDefaultWeatherData() {
+            weatherData = {
+                temperature: 26,
+                humidity: 68,
+                precipitation: 0,
+                windSpeed: 15,
+                description: 'partly cloudy'
+            };
+            updateWeatherDisplay();
+        }
+
+        // Update weather display
+        function updateWeatherDisplay() {
+            if (!weatherData) return;
+            
+            document.getElementById('currentTemp').textContent = `${Math.round(weatherData.temperature)}°C`;
+            document.getElementById('humidity').textContent = `${weatherData.humidity}%`;
+            document.getElementById('windSpeed').textContent = `${Math.round(weatherData.windSpeed)} km/h`;
+            document.getElementById('rainfallToday').textContent = `${weatherData.precipitation} mm`;
+        }
+
+        // Update location display
+        function updateLocationDisplay() {
+            if (!currentLocation) return;
+            
+            document.getElementById('currentLocation').textContent = 
+                `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`;
+        }
+
+        // Initialize map
+        function initializeMap() {
+            const defaultLocation = currentLocation || { latitude: -1.2921, longitude: 36.8219 };
+            
+            map = L.map('waterMap').setView([defaultLocation.latitude, defaultLocation.longitude], 15);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add irrigation zones
+            const zone1 = L.polygon([
+                [defaultLocation.latitude + 0.001, defaultLocation.longitude - 0.002],
+                [defaultLocation.latitude + 0.003, defaultLocation.longitude - 0.002],
+                [defaultLocation.latitude + 0.003, defaultLocation.longitude + 0.001],
+                [defaultLocation.latitude + 0.001, defaultLocation.longitude + 0.001]
+            ], {color: 'green', fillOpacity: 0.3}).addTo(map);
+            zone1.bindPopup('Zone 1 - Tomatoes<br>Moisture: 45%');
+            
+            const zone2 = L.polygon([
+                [defaultLocation.latitude + 0.001, defaultLocation.longitude + 0.001],
+                [defaultLocation.latitude + 0.003, defaultLocation.longitude + 0.001],
+                [defaultLocation.latitude + 0.003, defaultLocation.longitude + 0.004],
+                [defaultLocation.latitude + 0.001, defaultLocation.longitude + 0.004]
+            ], {color: 'blue', fillOpacity: 0.5}).addTo(map);
+            zone2.bindPopup('Zone 2 - Corn<br>Moisture: 25% (Active)');
+            
+            // Add water source marker
+            const waterIcon = L.divIcon({
+                className: 'custom-water-marker',
+                html: '<i class="fas fa-tint text-2xl text-blue-600"></i>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            
+            L.marker([defaultLocation.latitude, defaultLocation.longitude], { icon: waterIcon })
+                .addTo(map)
+                .bindPopup('Main Water Source')
+                .openPopup();
+        }
+
+        // Update map location
+        function updateMapLocation() {
+            if (map && currentLocation) {
+                map.setView([currentLocation.latitude, currentLocation.longitude], 15);
+            }
+        }
+
+        // Generate charts
+        function generateCharts() {
+            generateWaterUsageChart();
+            generateRainfallChart();
+        }
+
+        // Generate water usage chart
+        function generateWaterUsageChart() {
+            const ctx = document.getElementById('waterUsageChart').getContext('2d');
+            
+            const labels = [];
+            const data = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en', { weekday: 'short' }));
+                data.push(Math.floor(Math.random() * 1000) + 2000); // 2000-3000L
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Water Usage (L)',
+                        data: data,
+                        borderColor: '#0ea5e9',
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate rainfall chart
+        function generateRainfallChart() {
+            const ctx = document.getElementById('rainfallChart').getContext('2d');
+            
+            const labels = [];
+            const data = [];
+            for (let i = 0; i < 7; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() + i);
+                labels.push(date.toLocaleDateString('en', { weekday: 'short' }));
+                data.push(Math.floor(Math.random() * 15)); // 0-15mm
+            }
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Rainfall (mm)',
+                        data: data,
+                        backgroundColor: '#0ea5e9',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Start water monitoring
+        function startWaterMonitoring() {
+            // Simulate real-time data updates
+            setInterval(() => {
+                updateWaterMetrics();
+                updateSensorData();
+            }, 10000); // Update every 10 seconds
+        }
+
+        // Update water metrics
+        function updateWaterMetrics() {
+            // Simulate changing water usage
+            const currentUsage = 2450 + Math.floor(Math.random() * 200) - 100;
+            document.getElementById('waterUsageAmount').textContent = `${currentUsage.toLocaleString()}L`;
+            
+            // Update efficiency
+            const efficiency = 87 + Math.floor(Math.random() * 6) - 3;
+            document.querySelector('.text-purple-600').textContent = `${efficiency}%`;
+        }
+
+        // Update sensor data
+        function updateSensorData() {
+            // Update soil moisture for zones
+            Object.keys(irrigationZones).forEach(zone => {
+                if (irrigationZones[zone].active) {
+                    irrigationZones[zone].moisture = Math.min(65, irrigationZones[zone].moisture + 1);
+                } else {
+                    irrigationZones[zone].moisture = Math.max(20, irrigationZones[zone].moisture - 0.5);
+                }
+            });
+            
+            updateZoneDisplay();
+        }
+
+        // Update zone display
+        function updateZoneDisplay() {
+            Object.keys(irrigationZones).forEach(zone => {
+                const zoneElement = document.querySelector(`[data-zone="${zone}"]`);
+                if (zoneElement) {
+                    const moistureElement = zoneElement.querySelector('.text-gray-600');
+                    if (moistureElement) {
+                        moistureElement.textContent = `Moisture: ${Math.round(irrigationZones[zone].moisture)}%`;
+                    }
+                }
+            });
+        }
+
+        // Update language interface
+        function updateLanguageInterface() {
+            const config = languageConfig[currentLanguage];
+            if (!config) return;
+            
+            // Update all translatable elements
+            Object.keys(config).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = config[key];
+                }
+            });
+        }
+
+        // Chat message functions
+        function addAIChatMessage(message, isUser = false) {
+            const container = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'justify-end' : ''}`;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="bg-water text-white p-3 rounded-lg max-w-xs">
+                        <p class="text-sm">${message}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 bg-water rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${message}</p>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showAIThinking() {
+            const container = document.getElementById('aiChatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'aiThinking';
+            thinkingDiv.className = 'flex items-start space-x-3';
+            
+            thinkingDiv.innerHTML = `
+                <div class="w-8 h-8 bg-water rounded-full flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <div class="ai-thinking h-4 rounded"></div>
+                </div>
+            `;
+            
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.innerHTML = `
+                    <div class="w-8 h-8 bg-water rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${content}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function finalizeAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addAIChatMessage(content, false);
+        }
+
+        function showAIError() {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addAIChatMessage("I apologize, but I'm having trouble accessing water management data right now. Please try again or contact our support team.", false);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Language selector
+            document.getElementById('languageSelector').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+            });
+
+            // Irrigation mode toggles
+            document.getElementById('autoMode').addEventListener('click', function() {
+                this.className = 'bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors';
+                document.getElementById('manualMode').className = 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors';
+                showNotification('Auto mode activated. AI will optimize irrigation schedules.', 'success');
+            });
+
+            document.getElementById('manualMode').addEventListener('click', function() {
+                this.className = 'bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors';
+                document.getElementById('autoMode').className = 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors';
+                showNotification('Manual mode activated. You have full control over irrigation.', 'info');
+            });
+
+            // Zone toggle buttons
+            document.querySelectorAll('.zone-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const zone = this.dataset.zone;
+                    toggleIrrigationZone(zone);
+                });
+            });
+
+            // Global irrigation controls
+            document.getElementById('startAllZones').addEventListener('click', function() {
+                Object.keys(irrigationZones).forEach(zone => {
+                    startIrrigationZone(zone);
+                });
+                showNotification('All irrigation zones started.', 'success');
+            });
+
+            document.getElementById('stopAllZones').addEventListener('click', function() {
+                Object.keys(irrigationZones).forEach(zone => {
+                    stopIrrigationZone(zone);
+                });
+                showNotification('All irrigation zones stopped.', 'info');
+            });
+
+            document.getElementById('emergencyShutoff').addEventListener('click', function() {
+                showConfirmDialog('Emergency Stop', 'Are you sure you want to perform an emergency shutdown of all water systems?', () => {
+                    Object.keys(irrigationZones).forEach(zone => {
+                        stopIrrigationZone(zone);
+                    });
+                    showNotification('Emergency shutdown completed. All systems stopped.', 'warning');
+                });
+            });
+
+            // AI Chat
+            document.getElementById('waterAI').addEventListener('click', function() {
+                document.getElementById('waterAIModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeAIModal').addEventListener('click', function() {
+                document.getElementById('waterAIModal').classList.add('hidden');
+            });
+
+            document.getElementById('sendAIMessage').addEventListener('click', handleAIChatMessage);
+            document.getElementById('aiChatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleAIChatMessage();
+                }
+            });
+
+            // Schedule management
+            document.getElementById('addSchedule').addEventListener('click', function() {
+                document.getElementById('scheduleModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeScheduleModal').addEventListener('click', function() {
+                document.getElementById('scheduleModal').classList.add('hidden');
+            });
+
+            document.getElementById('saveSchedule').addEventListener('click', saveIrrigationSchedule);
+
+            // Quick actions
+            document.getElementById('droughtAlert').addEventListener('click', function() {
+                showDroughtAlerts();
+            });
+
+            document.getElementById('conservationTips').addEventListener('click', function() {
+                showConservationTips();
+            });
+
+            document.getElementById('systemDiagnostics').addEventListener('click', function() {
+                runSystemDiagnostics();
+            });
+        }
+
+        // Irrigation control functions
+        function toggleIrrigationZone(zone) {
+            if (irrigationZones[zone].active) {
+                stopIrrigationZone(zone);
+            } else {
+                startIrrigationZone(zone);
+            }
+        }
+
+        function startIrrigationZone(zone) {
+            irrigationZones[zone].active = true;
+            
+            const zoneElement = document.querySelector(`[data-zone="${zone}"]`);
+            zoneElement.classList.add('active');
+            
+            const button = zoneElement.querySelector('.zone-toggle');
+            button.innerHTML = '<i class="fas fa-stop mr-1"></i><span>Stop</span>';
+            button.className = 'zone-toggle bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors';
+            
+            updateActiveZonesCount();
+        }
+
+        function stopIrrigationZone(zone) {
+            irrigationZones[zone].active = false;
+            
+            const zoneElement = document.querySelector(`[data-zone="${zone}"]`);
+            zoneElement.classList.remove('active');
+            
+            const button = zoneElement.querySelector('.zone-toggle');
+            button.innerHTML = '<i class="fas fa-play mr-1"></i><span>Start</span>';
+            button.className = 'zone-toggle bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors';
+            
+            updateActiveZonesCount();
+        }
+
+        function updateActiveZonesCount() {
+            const activeCount = Object.values(irrigationZones).filter(zone => zone.active).length;
+            const totalZones = Object.keys(irrigationZones).length;
+            
+            const activeZonesElement = document.querySelector('#irrigationTitle').nextElementSibling;
+            activeZonesElement.textContent = `${activeCount}/${totalZones}`;
+        }
+
+        // Handle AI chat message
+        function handleAIChatMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (message && !isAIResponding) {
+                sendWaterDataToAI(message);
+                input.value = '';
+            }
+        }
+
+        // Save irrigation schedule
+        function saveIrrigationSchedule() {
+            const time = document.getElementById('scheduleTime').value;
+            const duration = document.getElementById('scheduleDuration').value;
+            const selectedZones = Array.from(document.querySelectorAll('#scheduleModal input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+            
+            if (!time || !duration || selectedZones.length === 0) {
+                showNotification('Please fill in all fields and select at least one zone.', 'error');
+                return;
+            }
+            
+            // Add to schedule (in real app, this would save to database)
+            const scheduleItem = {
+                time,
+                duration,
+                zones: selectedZones,
+                id: Date.now()
+            };
+            
+            showNotification(`Schedule added: ${time} for zones ${selectedZones.join(', ')} - ${duration} minutes`, 'success');
+            document.getElementById('scheduleModal').classList.add('hidden');
+            
+            // Reset form
+            document.getElementById('scheduleTime').value = '';
+            document.getElementById('scheduleDuration').value = '';
+            document.querySelectorAll('#scheduleModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+
+        // Show drought alerts
+        function showDroughtAlerts() {
+            showModal('Drought Monitoring & Alerts', `
+                <div class="space-y-4">
+                    <div class="drought-alert p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <i class="fas fa-exclamation-triangle text-orange-600"></i>
+                            <h4 class="font-semibold text-orange-800">Moderate Drought Risk</h4>
+                        </div>
+                        <p class="text-orange-700 text-sm">Long-term forecast shows reduced rainfall probability. Consider implementing water conservation measures.</p>
+                    </div>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 dark:text-blue-300 mb-2">Recommendations:</h4>
+                        <ul class="text-blue-700 dark:text-blue-300 text-sm space-y-1">
+                            <li>• Increase water storage capacity</li>
+                            <li>• Switch to drought-resistant crops</li>
+                            <li>• Implement deficit irrigation strategies</li>
+                            <li>• Install soil moisture sensors</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-orange-500 text-white py-2 rounded hover:bg-orange-600 transition-colors">
+                        Close
+                    </button>
+                </div>
+            `);
+        }
+
+        // Show conservation tips
+        function showConservationTips() {
+            showModal('Water Conservation Tips', `
+                <div class="space-y-4">
+                    <div class="grid gap-4">
+                        <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                            <h4 class="font-semibold text-green-800 dark:text-green-300 mb-2">
+                                <i class="fas fa-tint mr-2"></i>Irrigation Efficiency
+                            </h4>
+                            <ul class="text-green-700 dark:text-green-300 text-sm space-y-1">
+                                <li>• Use drip irrigation to save 40% water</li>
+                                <li>• Schedule watering during early morning</li>
+                                <li>• Install smart controllers with weather sensors</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                            <h4 class="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                                <i class="fas fa-seedling mr-2"></i>Soil Management
+                            </h4>
+                            <ul class="text-blue-700 dark:text-blue-300 text-sm space-y-1">
+                                <li>• Apply organic mulch to reduce evaporation</li>
+                                <li>• Improve soil structure with compost</li>
+                                <li>• Plant cover crops to retain moisture</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                            <h4 class="font-semibold text-purple-800 dark:text-purple-300 mb-2">
+                                <i class="fas fa-recycle mr-2"></i>Water Recycling
+                            </h4>
+                            <ul class="text-purple-700 dark:text-purple-300 text-sm space-y-1">
+                                <li>• Collect and reuse rainwater</li>
+                                <li>• Treat and reuse greywater</li>
+                                <li>• Install water recycling systems</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition-colors">
+                        Close
+                    </button>
+                </div>
+            `);
+        }
+
+        // Run system diagnostics
+        function runSystemDiagnostics() {
+            showModal('System Diagnostics', `
+                <div class="space-y-4">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-cogs text-4xl text-blue-600 mb-2"></i>
+                        <h3 class="text-lg font-semibold">Running Diagnostics...</h3>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <span class="text-green-700 dark:text-green-300">Water Pressure</span>
+                            <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Normal</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <span class="text-green-700 dark:text-green-300">Flow Sensors</span>
+                            <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Active</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                            <span class="text-red-700 dark:text-red-300">Flow Meter #2</span>
+                            <span class="text-red-600"><i class="fas fa-times-circle mr-1"></i>Offline</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-2 bg-green-50 dark:bg-green-900/20 rounded">
+                            <span class="text-green-700 dark:text-green-300">Water Quality</span>
+                            <span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Good</span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded">
+                            <span class="text-yellow-700 dark:text-yellow-300">Filter Status</span>
+                            <span class="text-yellow-600"><i class="fas fa-exclamation-triangle mr-1"></i>Replace Soon</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 dark:text-blue-300 mb-2">Recommendations:</h4>
+                        <ul class="text-blue-700 dark:text-blue-300 text-sm space-y-1">
+                            <li>• Check Flow Meter #2 connection</li>
+                            <li>• Schedule filter replacement</li>
+                            <li>• System operating at 94% efficiency</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 transition-colors">
+                        Close Diagnostics
+                    </button>
+                </div>
+            `);
+        }
+
+        // Initialize weather data fetching
+        function initializeWeatherData() {
+            // Fetch weather data every 30 minutes
+            setInterval(fetchWeatherData, 30 * 60 * 1000);
+        }
+
+        // Show modal
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">${title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show confirmation dialog
+        function showConfirmDialog(title, message, onConfirm) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full">
+                    <div class="p-6">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-4">${title}</h2>
+                        <p class="text-gray-600 dark:text-gray-300 mb-6">${message}</p>
+                        <div class="flex space-x-3">
+                            <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                                Cancel
+                            </button>
+                            <button onclick="this.closest('.fixed').remove(); (${onConfirm})()" class="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 transition-colors">
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-orange-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-triangle' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

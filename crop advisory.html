@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Advisory - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        earth: '#a3a3a3',
+                        sky: '#0ea5e9',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .crop-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .crop-card:hover {
+            transform: translateY(-5px);
+            border-color: #22c55e;
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.2);
+        }
+        .crop-card.selected {
+            border-color: #22c55e;
+            background: linear-gradient(145deg, #f0fdf4, #dcfce7);
+        }
+        .crop-card.selected.dark {
+            background: linear-gradient(145deg, #14532d, #166534);
+        }
+        .season-indicator {
+            animation: pulse 2s infinite;
+        }
+        .loading-dots {
+            display: inline-block;
+        }
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        .floating-widget {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .ai-thinking {
+            background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .progress-ring {
+            transition: stroke-dasharray 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <a href="weather.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Weather</a>
+                    <a href="#" class="text-primary font-semibold">Crop Advisory</a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Livestock</a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Market Hub</a>
+                    <a href="#" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                </div>
+
+                <!-- Farm Profile -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-map-marker-alt text-primary"></i>
+                        <select id="farmLocation" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm">
+                            <option value="">Select Location</option>
+                            <option value="nairobi">Nairobi, Kenya</option>
+                            <option value="lagos">Lagos, Nigeria</option>
+                            <option value="accra">Accra, Ghana</option>
+                            <option value="kampala">Kampala, Uganda</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="climate-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-leaf mr-3"></i>Smart Crop Advisory
+                </h1>
+                <p class="text-xl opacity-90 mb-6">AI-powered recommendations for optimal crop selection, planting, and harvesting</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">500+</div>
+                        <div class="text-sm opacity-75">Crop Varieties</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">95%</div>
+                        <div class="text-sm opacity-75">Success Rate</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75">AI Support</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Farm Setup -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                    <i class="fas fa-cog text-primary mr-2"></i>Farm Profile Setup
+                </h2>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Farm Size</label>
+                        <select id="farmSize" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                            <option value="">Select farm size</option>
+                            <option value="small">Small (< 1 hectare)</option>
+                            <option value="medium">Medium (1-5 hectares)</option>
+                            <option value="large">Large (5+ hectares)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Soil Type</label>
+                        <select id="soilType" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                            <option value="">Select soil type</option>
+                            <option value="clay">Clay</option>
+                            <option value="loam">Loam</option>
+                            <option value="sandy">Sandy</option>
+                            <option value="silt">Silt</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Experience Level</label>
+                        <select id="experienceLevel" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                            <option value="">Select experience</option>
+                            <option value="beginner">Beginner (0-2 years)</option>
+                            <option value="intermediate">Intermediate (3-5 years)</option>
+                            <option value="expert">Expert (5+ years)</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="updateProfile" class="mt-6 bg-primary text-white px-8 py-3 rounded-lg hover:bg-secondary transition-colors">
+                    <i class="fas fa-save mr-2"></i>Update Profile & Get Recommendations
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI-Powered Crop Recommendations -->
+    <section class="py-8">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Current Season Recommendations -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+                                <i class="fas fa-star text-yellow-500 mr-2"></i>Recommended for You
+                            </h2>
+                            <div class="season-indicator bg-primary text-white px-3 py-1 rounded-full text-sm">
+                                Current Season
+                            </div>
+                        </div>
+                        
+                        <div id="cropRecommendations" class="grid md:grid-cols-2 gap-6">
+                            <!-- Crop recommendations will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Planting Calendar -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-calendar-alt text-primary mr-2"></i>Optimal Planting Calendar
+                        </h3>
+                        <div id="plantingCalendar" class="space-y-4">
+                            <!-- Calendar will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Crop Advisor Chat -->
+                <div class="space-y-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center mr-3">
+                                <i class="fas fa-robot text-white text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white">AI Crop Advisor</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">Ask me anything about crops!</p>
+                            </div>
+                        </div>
+                        
+                        <div id="chatContainer" class="h-96 overflow-y-auto mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div id="chatMessages" class="space-y-4">
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                        <i class="fas fa-robot text-white text-sm"></i>
+                                    </div>
+                                    <div class="bg-white dark:bg-gray-600 p-3 rounded-lg max-w-xs">
+                                        <p class="text-gray-800 dark:text-white text-sm">Hello! I'm your AI crop advisor. I can help you choose the best crops for your farm, provide planting advice, and answer any agricultural questions. How can I assist you today?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <input type="text" id="chatInput" placeholder="Ask about crops, planting, harvesting..." 
+                                   class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                            <button id="sendMessage" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <button class="quick-question bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-primary hover:text-white transition-colors">
+                                Best crops for my location?
+                            </button>
+                            <button class="quick-question bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-primary hover:text-white transition-colors">
+                                When to plant maize?
+                            </button>
+                            <button class="quick-question bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-primary hover:text-white transition-colors">
+                                Pest control tips?
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Tools -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-tools text-primary mr-2"></i>Quick Tools
+                        </h3>
+                        <div class="space-y-3">
+                            <button id="cropComparison" class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left">
+                                <i class="fas fa-balance-scale mr-2"></i>Compare Crops
+                            </button>
+                            <button id="soilAnalysis" class="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-left">
+                                <i class="fas fa-vial mr-2"></i>Soil Analysis
+                            </button>
+                            <button id="pestIdentifier" class="w-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-left">
+                                <i class="fas fa-bug mr-2"></i>Pest Identifier
+                            </button>
+                            <button id="marketPrices" class="w-full bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors text-left">
+                                <i class="fas fa-chart-line mr-2"></i>Market Prices
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Crop Database -->
+    <section class="py-8 bg-white dark:bg-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-database text-primary mr-2"></i>Crop Database
+                </h2>
+                <div class="flex space-x-4">
+                    <select id="cropCategory" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg">
+                        <option value="">All Categories</option>
+                        <option value="cereals">Cereals</option>
+                        <option value="legumes">Legumes</option>
+                        <option value="vegetables">Vegetables</option>
+                        <option value="fruits">Fruits</option>
+                        <option value="cash-crops">Cash Crops</option>
+                    </select>
+                    <input type="text" id="cropSearch" placeholder="Search crops..." 
+                           class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                </div>
+            </div>
+            
+            <div id="cropDatabase" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Crop cards will be populated here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Seasonal Insights -->
+    <section class="py-8 bg-gray-50 dark:bg-gray-900">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+                <i class="fas fa-chart-area text-primary mr-2"></i>Seasonal Crop Insights
+            </h2>
+            
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- Yield Prediction Chart -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Expected Yield Trends</h3>
+                    <canvas id="yieldChart" class="w-full h-64"></canvas>
+                </div>
+                
+                <!-- Price Forecast -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Market Price Forecast</h3>
+                    <canvas id="priceChart" class="w-full h-64"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Success Stories -->
+    <section class="py-8 bg-white dark:bg-gray-800">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+                <i class="fas fa-trophy text-primary mr-2"></i>Success Stories
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%2322c55e'/%3E%3Ctext x='24' y='30' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EAK%3C/text%3E%3C/svg%3E" alt="Alice Kamau" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 dark:text-white">Alice Kamau</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Kenya</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">"The AI advisor recommended drought-resistant maize varieties. My yield increased by 60% despite the dry season!"</p>
+                    <div class="flex items-center text-yellow-500">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <span class="ml-2 text-sm text-gray-600 dark:text-gray-300">+60% yield</span>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%2315803d'/%3E%3Ctext x='24' y='30' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EBO%3C/text%3E%3C/svg%3E" alt="Benjamin Okafor" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 dark:text-white">Benjamin Okafor</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Nigeria</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">"Perfect timing recommendations for yam planting. The AI's market insights helped me get premium prices too."</p>
+                    <div class="flex items-center text-yellow-500">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <span class="ml-2 text-sm text-gray-600 dark:text-gray-300">+40% profit</span>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%2384cc16'/%3E%3Ctext x='24' y='30' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EFA%3C/text%3E%3C/svg%3E" alt="Fatima Asante" class="w-12 h-12 rounded-full mr-3">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 dark:text-white">Fatima Asante</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Ghana</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">"Switched to climate-smart crops based on AI advice. Now my farm is profitable even during challenging weather."</p>
+                    <div class="flex items-center text-yellow-500">
+                        <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                        <span class="ml-2 text-sm text-gray-600 dark:text-gray-300">+75% stability</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                    <div class="w-8 h-8 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-sm"></i>
+                    </div>
+                    <span class="text-lg font-bold">Agriclimate Connect</span>
+                </div>
+                <div class="text-sm text-gray-300">
+                    AI-powered crop advisory | Trusted by 50,000+ farmers worldwide
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Floating Quick Actions -->
+    <div class="floating-widget">
+        <div class="bg-white dark:bg-gray-800 rounded-full shadow-lg p-3 mb-3">
+            <button id="quickWeatherCheck" class="w-12 h-12 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors">
+                <i class="fas fa-cloud-sun"></i>
+            </button>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-full shadow-lg p-3">
+            <button id="quickCropAdvice" class="w-12 h-12 bg-primary text-white rounded-full hover:bg-secondary transition-colors">
+                <i class="fas fa-leaf"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Crop database with comprehensive information
+        const cropDatabase = [
+            {
+                id: 1,
+                name: 'Drought-Resistant Maize',
+                category: 'cereals',
+                plantingTime: 'March - May',
+                harvestTime: '4-5 months',
+                soilType: ['loam', 'sandy'],
+                climate: 'Semi-arid',
+                icon: '🌽',
+                yield: '3-5 tons/hectare',
+                marketPrice: '$400-600/ton',
+                difficulty: 'beginner',
+                waterRequirement: 'Low',
+                description: 'Climate-resilient maize variety perfect for areas with irregular rainfall patterns.'
+            },
+            {
+                id: 2,
+                name: 'Black Beans',
+                category: 'legumes',
+                plantingTime: 'October - December',
+                harvestTime: '3-4 months',
+                soilType: ['loam', 'clay'],
+                climate: 'Tropical',
+                icon: '🫘',
+                yield: '1.5-2.5 tons/hectare',
+                marketPrice: '$800-1200/ton',
+                difficulty: 'intermediate',
+                waterRequirement: 'Medium',
+                description: 'High-protein legume that enriches soil nitrogen and provides excellent market value.'
+            },
+            {
+                id: 3,
+                name: 'Sweet Potatoes',
+                category: 'vegetables',
+                plantingTime: 'February - April',
+                harvestTime: '4-6 months',
+                soilType: ['sandy', 'loam'],
+                climate: 'Tropical/Subtropical',
+                icon: '🍠',
+                yield: '15-25 tons/hectare',
+                marketPrice: '$300-500/ton',
+                difficulty: 'beginner',
+                waterRequirement: 'Medium',
+                description: 'Nutritious root crop with high vitamin A content, excellent for food security.'
+            },
+            {
+                id: 4,
+                name: 'Sorghum',
+                category: 'cereals',
+                plantingTime: 'April - June',
+                harvestTime: '4-5 months',
+                soilType: ['sandy', 'clay'],
+                climate: 'Arid/Semi-arid',
+                icon: '🌾',
+                yield: '2-4 tons/hectare',
+                marketPrice: '$350-500/ton',
+                difficulty: 'beginner',
+                waterRequirement: 'Very Low',
+                description: 'Extremely drought-tolerant cereal grain ideal for harsh climate conditions.'
+            },
+            {
+                id: 5,
+                name: 'Groundnuts',
+                category: 'legumes',
+                plantingTime: 'May - July',
+                harvestTime: '3-4 months',
+                soilType: ['sandy', 'loam'],
+                climate: 'Semi-arid',
+                icon: '🥜',
+                yield: '1-2 tons/hectare',
+                marketPrice: '$1000-1500/ton',
+                difficulty: 'intermediate',
+                waterRequirement: 'Low',
+                description: 'Oil-rich legume with excellent market demand and soil improvement properties.'
+            },
+            {
+                id: 6,
+                name: 'Cassava',
+                category: 'vegetables',
+                plantingTime: 'March - May',
+                harvestTime: '8-12 months',
+                soilType: ['sandy', 'loam', 'clay'],
+                climate: 'Tropical',
+                icon: '🥔',
+                yield: '20-40 tons/hectare',
+                marketPrice: '$200-350/ton',
+                difficulty: 'beginner',
+                waterRequirement: 'Low',
+                description: 'Hardy root crop providing food security and industrial raw materials.'
+            }
+        ];
+
+        // AI conversation context and state
+        let farmProfile = {
+            location: '',
+            size: '',
+            soilType: '',
+            experience: ''
+        };
+        let conversationHistory = [];
+        let isAIResponding = false;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            loadCropRecommendations();
+            populateCropDatabase();
+            generatePlantingCalendar();
+            generateCharts();
+            setupEventListeners();
+            initializePoeAPI();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI responses
+        function initializePoeAPI() {
+            // Register AI response handler
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('crop-advisor-handler', handleAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe
+        function handleAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    // Update the AI message with streaming content
+                    updateAIMessage(aiMessage.content);
+                } else if (aiMessage.status === 'complete') {
+                    // Finalize the AI message
+                    finalizeAIMessage(aiMessage.content);
+                    isAIResponding = false;
+                } else if (aiMessage.status === 'error') {
+                    showAIError();
+                    isAIResponding = false;
+                }
+            }
+        }
+
+        // Send message to AI using Poe API
+        async function sendToAI(userMessage) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            
+            // Add user message to chat
+            addChatMessage(userMessage, true);
+            
+            // Show AI thinking indicator
+            showAIThinking();
+            
+            // Build context-aware prompt
+            const contextPrompt = buildAIPrompt(userMessage);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'crop-advisor-handler',
+                        stream: true,
+                        openChat: false
+                    });
+                } else {
+                    // Fallback to local AI simulation
+                    setTimeout(() => {
+                        const response = getLocalAIResponse(userMessage);
+                        finalizeAIMessage(response);
+                        isAIResponding = false;
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('AI API error:', error);
+                showAIError();
+                isAIResponding = false;
+            }
+        }
+
+        // Build context-aware prompt for AI
+        function buildAIPrompt(userMessage) {
+            const farmInfo = `Farm Profile: Location: ${farmProfile.location || 'Not specified'}, Size: ${farmProfile.size || 'Not specified'}, Soil: ${farmProfile.soilType || 'Not specified'}, Experience: ${farmProfile.experience || 'Not specified'}`;
+            
+            const conversationContext = conversationHistory.length > 0 ? 
+                `Previous conversation: ${conversationHistory.slice(-3).map(msg => `${msg.type}: ${msg.content}`).join(' | ')}` : 
+                '';
+            
+            const systemPrompt = `You are an expert agricultural advisor specializing in climate-smart farming. You provide precise, actionable advice about crops, planting, harvesting, pest management, and farming techniques. Always be helpful, accurate, and consider the farmer's specific conditions.
+
+Guidelines:
+- For greetings, respond warmly and professionally as an agricultural expert
+- Provide specific, practical advice based on location and conditions
+- Include exact timeframes, quantities, and methods when possible
+- Consider climate change impacts and sustainable practices
+- Be encouraging but realistic about challenges
+- Ask clarifying questions when needed
+
+${farmInfo}
+${conversationContext}
+
+Farmer's question: ${userMessage}
+
+Provide a helpful, specific response as an agricultural expert:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Local AI response fallback
+        function getLocalAIResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Greetings
+            if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('good morning') || lowerMessage.includes('good afternoon')) {
+                return "Hello! I'm your AI crop advisor, here to help you make the best farming decisions. I can assist with crop selection, planting schedules, pest management, soil health, and market insights. What specific farming challenge can I help you with today?";
+            }
+            
+            // Crop recommendations
+            if (lowerMessage.includes('best crop') || lowerMessage.includes('recommend') || lowerMessage.includes('what should i plant')) {
+                const location = farmProfile.location;
+                const soil = farmProfile.soilType;
+                return `Based on your ${location ? location + ' location' : 'region'} and ${soil ? soil + ' soil' : 'soil conditions'}, I recommend:\n\n1. **Drought-resistant maize** - Plant in March-May, harvest in 4-5 months\n2. **Sorghum** - Excellent for dry conditions, very low water needs\n3. **Sweet potatoes** - High nutrition, good market value\n\nWould you like specific planting instructions for any of these crops?`;
+            }
+            
+            // Planting timing
+            if (lowerMessage.includes('when to plant') || lowerMessage.includes('planting time')) {
+                return "For optimal planting timing in East Africa:\n\n**Long Rains (March-May):**\n- Maize, beans, sorghum\n- Sweet potatoes, cassava\n\n**Short Rains (October-December):**\n- Quick-maturing varieties\n- Vegetables and legumes\n\nCurrent weather patterns suggest this is an excellent time for drought-resistant varieties. Which specific crop are you considering?";
+            }
+            
+            // Pest control
+            if (lowerMessage.includes('pest') || lowerMessage.includes('disease') || lowerMessage.includes('control')) {
+                return "For integrated pest management:\n\n**Prevention:**\n- Crop rotation every season\n- Companion planting (maize + beans)\n- Regular field monitoring\n\n**Organic treatments:**\n- Neem oil spray for aphids\n- Wood ash for cutworms\n- Beneficial insects (ladybugs)\n\n**Early intervention:**\n- Remove affected plants immediately\n- Apply treatments during cool hours\n\nWhat specific pest or disease symptoms are you observing?";
+            }
+            
+            // Soil management
+            if (lowerMessage.includes('soil') || lowerMessage.includes('fertilizer') || lowerMessage.includes('compost')) {
+                return "For healthy soil management:\n\n**Organic matter:**\n- Add compost (2-3 tons/hectare)\n- Plant cover crops during off-season\n- Use crop residues as mulch\n\n**Fertilizer timing:**\n- Apply base fertilizer at planting\n- Top-dress nitrogen at 4 weeks\n- Phosphorus for root development\n\nYour soil test results will determine exact nutrient needs. Would you like guidance on conducting a soil test?";
+            }
+            
+            // Market information
+            if (lowerMessage.includes('market') || lowerMessage.includes('price') || lowerMessage.includes('sell')) {
+                return "Current market insights:\n\n**High demand crops:**\n- Drought-resistant seeds: $1200-1500/ton\n- Organic vegetables: Premium 30-40%\n- Processed products: Value addition opportunities\n\n**Best selling practices:**\n- Form farmer groups for bulk sales\n- Direct market connections\n- Post-harvest handling training\n\nWhich crops are you planning to market?";
+            }
+            
+            // Default response
+            return "I'm here to help with all your farming questions! I can provide guidance on:\n\n• Crop selection and varieties\n• Planting and harvesting schedules\n• Soil management and fertilization\n• Pest and disease control\n• Market insights and pricing\n• Climate adaptation strategies\n\nWhat specific farming challenge would you like help with?";
+        }
+
+        // Add message to chat interface
+        function addChatMessage(message, isUser = false) {
+            const container = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+            
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 ${isUser ? 'bg-secondary' : 'bg-primary'} rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-white text-sm"></i>
+                </div>
+                <div class="bg-${isUser ? 'secondary' : 'white dark:bg-gray-600'} p-3 rounded-lg max-w-sm ${isUser ? 'text-white' : 'text-gray-800 dark:text-white'} text-sm">
+                    <p>${message}</p>
+                </div>
+            `;
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Store in conversation history
+            conversationHistory.push({
+                type: isUser ? 'user' : 'assistant',
+                content: message,
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        // Show AI thinking indicator
+        function showAIThinking() {
+            const container = document.getElementById('chatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'aiThinking';
+            thinkingDiv.className = 'flex items-start space-x-3';
+            
+            thinkingDiv.innerHTML = `
+                <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="bg-white dark:bg-gray-600 p-3 rounded-lg max-w-sm">
+                    <div class="ai-thinking h-4 rounded"></div>
+                </div>
+            `;
+            
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Update AI message while streaming
+        function updateAIMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.innerHTML = `
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-white dark:bg-gray-600 p-3 rounded-lg max-w-sm text-gray-800 dark:text-white text-sm">
+                        <p>${content}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Finalize AI message
+        function finalizeAIMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addChatMessage(content, false);
+        }
+
+        // Show AI error
+        function showAIError() {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addChatMessage("I apologize, but I'm having trouble responding right now. Please try asking your question again, or contact our support team for assistance.", false);
+        }
+
+        // Load crop recommendations based on profile
+        function loadCropRecommendations() {
+            const container = document.getElementById('cropRecommendations');
+            const recommendedCrops = cropDatabase.slice(0, 4); // Get top 4 recommendations
+            
+            container.innerHTML = '';
+            
+            recommendedCrops.forEach(crop => {
+                const cropCard = createCropRecommendationCard(crop);
+                container.appendChild(cropCard);
+            });
+        }
+
+        // Create crop recommendation card
+        function createCropRecommendationCard(crop) {
+            const card = document.createElement('div');
+            card.className = 'crop-card bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg cursor-pointer';
+            
+            const matchPercentage = calculateCropMatch(crop);
+            
+            card.innerHTML = `
+                <div class="flex items-center justify-between mb-4">
+                    <div class="text-3xl">${crop.icon}</div>
+                    <div class="text-right">
+                        <div class="text-lg font-bold text-primary">${matchPercentage}%</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">match</div>
+                    </div>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">${crop.name}</h3>
+                <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300 mb-4">
+                    <div><i class="fas fa-calendar text-primary mr-2"></i>Plant: ${crop.plantingTime}</div>
+                    <div><i class="fas fa-clock text-primary mr-2"></i>Harvest: ${crop.harvestTime}</div>
+                    <div><i class="fas fa-chart-bar text-primary mr-2"></i>Yield: ${crop.yield}</div>
+                    <div><i class="fas fa-dollar-sign text-primary mr-2"></i>Price: ${crop.marketPrice}</div>
+                </div>
+                <button class="w-full bg-primary text-white py-2 rounded-lg hover:bg-secondary transition-colors">
+                    Get Detailed Guide
+                </button>
+            `;
+            
+            card.addEventListener('click', () => showCropDetails(crop));
+            
+            return card;
+        }
+
+        // Calculate crop match percentage based on farm profile
+        function calculateCropMatch(crop) {
+            let match = 70; // Base match
+            
+            // Adjust based on soil type
+            if (farmProfile.soilType && crop.soilType.includes(farmProfile.soilType)) {
+                match += 15;
+            }
+            
+            // Adjust based on experience level
+            if (farmProfile.experience === crop.difficulty) {
+                match += 10;
+            } else if (farmProfile.experience === 'expert' && crop.difficulty === 'intermediate') {
+                match += 5;
+            }
+            
+            // Add some randomness for demo
+            match += Math.floor(Math.random() * 10);
+            
+            return Math.min(match, 99);
+        }
+
+        // Show detailed crop information
+        function showCropDetails(crop) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-2xl w-full max-h-full overflow-auto">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">${crop.icon} ${crop.name}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <h3 class="font-semibold text-gray-800 dark:text-white mb-3">Growing Information</h3>
+                                <div class="space-y-2 text-sm">
+                                    <div><strong>Planting Time:</strong> ${crop.plantingTime}</div>
+                                    <div><strong>Harvest Time:</strong> ${crop.harvestTime}</div>
+                                    <div><strong>Soil Type:</strong> ${crop.soilType.join(', ')}</div>
+                                    <div><strong>Climate:</strong> ${crop.climate}</div>
+                                    <div><strong>Water Requirement:</strong> ${crop.waterRequirement}</div>
+                                    <div><strong>Difficulty:</strong> ${crop.difficulty}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800 dark:text-white mb-3">Economic Information</h3>
+                                <div class="space-y-2 text-sm">
+                                    <div><strong>Expected Yield:</strong> ${crop.yield}</div>
+                                    <div><strong>Market Price:</strong> ${crop.marketPrice}</div>
+                                    <div><strong>Category:</strong> ${crop.category}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <h3 class="font-semibold text-gray-800 dark:text-white mb-3">Description</h3>
+                            <p class="text-gray-600 dark:text-gray-300">${crop.description}</p>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="askAIAboutCrop('${crop.name}')" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition-colors">
+                                Ask AI About This Crop
+                            </button>
+                            <button class="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                                Add to My Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Ask AI about specific crop
+        function askAIAboutCrop(cropName) {
+            const question = `Tell me more about growing ${cropName}. What are the best practices, common challenges, and tips for success?`;
+            document.getElementById('chatInput').value = question;
+            sendToAI(question);
+            
+            // Close modal
+            const modal = document.querySelector('.fixed.inset-0');
+            if (modal) modal.remove();
+            
+            // Scroll to chat
+            document.getElementById('chatContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Populate crop database display
+        function populateCropDatabase() {
+            const container = document.getElementById('cropDatabase');
+            
+            cropDatabase.forEach(crop => {
+                const cropCard = document.createElement('div');
+                cropCard.className = 'crop-card bg-white dark:bg-gray-700 p-4 rounded-xl shadow-lg cursor-pointer';
+                cropCard.dataset.category = crop.category;
+                cropCard.dataset.name = crop.name.toLowerCase();
+                
+                cropCard.innerHTML = `
+                    <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">${crop.icon}</div>
+                        <h3 class="font-bold text-gray-800 dark:text-white">${crop.name}</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 capitalize">${crop.category}</p>
+                    </div>
+                    <div class="space-y-1 text-xs text-gray-600 dark:text-gray-300">
+                        <div><strong>Plant:</strong> ${crop.plantingTime}</div>
+                        <div><strong>Harvest:</strong> ${crop.harvestTime}</div>
+                        <div><strong>Yield:</strong> ${crop.yield}</div>
+                    </div>
+                `;
+                
+                cropCard.addEventListener('click', () => showCropDetails(crop));
+                container.appendChild(cropCard);
+            });
+        }
+
+        // Generate planting calendar
+        function generatePlantingCalendar() {
+            const container = document.getElementById('plantingCalendar');
+            const months = [
+                { name: 'January', crops: ['Vegetables', 'Short-season legumes'], season: 'dry' },
+                { name: 'February', crops: ['Sweet potatoes', 'Cassava'], season: 'dry' },
+                { name: 'March', crops: ['Maize', 'Beans', 'Sorghum'], season: 'long-rains' },
+                { name: 'April', crops: ['Maize', 'Beans', 'Sweet potatoes'], season: 'long-rains' },
+                { name: 'May', crops: ['Late maize', 'Vegetables'], season: 'long-rains' },
+                { name: 'June', crops: ['Dry season crops'], season: 'dry' },
+                { name: 'July', crops: ['Groundnuts', 'Sorghum'], season: 'dry' },
+                { name: 'August', crops: ['Land preparation'], season: 'dry' },
+                { name: 'September', crops: ['Early varieties'], season: 'dry' },
+                { name: 'October', crops: ['Short-rain maize', 'Beans'], season: 'short-rains' },
+                { name: 'November', crops: ['Vegetables', 'Legumes'], season: 'short-rains' },
+                { name: 'December', crops: ['Quick maturing crops'], season: 'short-rains' }
+            ];
+            
+            const currentMonth = new Date().getMonth();
+            
+            months.forEach((month, index) => {
+                const monthCard = document.createElement('div');
+                monthCard.className = `p-4 rounded-lg border-2 ${
+                    index === currentMonth ? 
+                    'border-primary bg-primary/10' : 
+                    'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
+                }`;
+                
+                monthCard.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-semibold text-gray-800 dark:text-white">${month.name}</h4>
+                        <span class="text-xs px-2 py-1 rounded-full ${
+                            month.season === 'long-rains' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                            month.season === 'short-rains' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }">${month.season}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300">
+                        ${month.crops.join(', ')}
+                    </div>
+                    ${index === currentMonth ? '<div class="text-xs text-primary font-medium mt-1">Current Month</div>' : ''}
+                `;
+                
+                container.appendChild(monthCard);
+            });
+        }
+
+        // Generate charts
+        function generateCharts() {
+            generateYieldChart();
+            generatePriceChart();
+        }
+
+        // Generate yield prediction chart
+        function generateYieldChart() {
+            const ctx = document.getElementById('yieldChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Maize Yield (tons/ha)',
+                        data: [2.1, 2.3, 4.2, 4.8, 4.5, 2.8, 2.2, 1.9, 2.4, 3.8, 4.1, 3.2],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }, {
+                        label: 'Beans Yield (tons/ha)',
+                        data: [1.2, 1.4, 2.1, 2.3, 2.0, 1.1, 0.9, 0.8, 1.2, 1.8, 1.9, 1.5],
+                        borderColor: '#84cc16',
+                        backgroundColor: 'rgba(132, 204, 22, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate price forecast chart
+        function generatePriceChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Maize Price ($/ton)',
+                        data: [450, 420, 380, 360, 340, 400, 480, 520, 510, 460, 440, 470],
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#1d4ed8',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Farm profile updates
+            document.getElementById('updateProfile').addEventListener('click', updateFarmProfile);
+            
+            // Chat functionality
+            document.getElementById('sendMessage').addEventListener('click', handleChatMessage);
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleChatMessage();
+                }
+            });
+            
+            // Quick questions
+            document.querySelectorAll('.quick-question').forEach(button => {
+                button.addEventListener('click', function() {
+                    const question = this.textContent;
+                    document.getElementById('chatInput').value = question;
+                    sendToAI(question);
+                });
+            });
+            
+            // Crop database filters
+            document.getElementById('cropCategory').addEventListener('change', filterCrops);
+            document.getElementById('cropSearch').addEventListener('input', filterCrops);
+            
+            // Quick tools
+            document.getElementById('cropComparison').addEventListener('click', () => showTool('comparison'));
+            document.getElementById('soilAnalysis').addEventListener('click', () => showTool('soil'));
+            document.getElementById('pestIdentifier').addEventListener('click', () => showTool('pest'));
+            document.getElementById('marketPrices').addEventListener('click', () => showTool('market'));
+            
+            // Floating widgets
+            document.getElementById('quickWeatherCheck').addEventListener('click', () => {
+                sendToAI("What's the current weather conditions for farming activities?");
+            });
+            
+            document.getElementById('quickCropAdvice').addEventListener('click', () => {
+                sendToAI("What crops should I consider planting right now based on current conditions?");
+            });
+        }
+
+        // Update farm profile
+        function updateFarmProfile() {
+            farmProfile = {
+                location: document.getElementById('farmLocation').value,
+                size: document.getElementById('farmSize').value,
+                soilType: document.getElementById('soilType').value,
+                experience: document.getElementById('experienceLevel').value
+            };
+            
+            // Reload recommendations based on updated profile
+            loadCropRecommendations();
+            
+            // Send updated profile to AI
+            const profileMessage = `I've updated my farm profile: Location: ${farmProfile.location}, Size: ${farmProfile.size}, Soil Type: ${farmProfile.soilType}, Experience: ${farmProfile.experience}. Please provide personalized recommendations for my farm.`;
+            sendToAI(profileMessage);
+            
+            // Show success message
+            showNotification('Farm profile updated! Getting personalized recommendations...', 'success');
+        }
+
+        // Handle chat message sending
+        function handleChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message && !isAIResponding) {
+                sendToAI(message);
+                input.value = '';
+            }
+        }
+
+        // Filter crops in database
+        function filterCrops() {
+            const category = document.getElementById('cropCategory').value;
+            const search = document.getElementById('cropSearch').value.toLowerCase();
+            const cards = document.querySelectorAll('#cropDatabase .crop-card');
+            
+            cards.forEach(card => {
+                const cardCategory = card.dataset.category;
+                const cardName = card.dataset.name;
+                
+                const categoryMatch = !category || cardCategory === category;
+                const searchMatch = !search || cardName.includes(search);
+                
+                if (categoryMatch && searchMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Show tools
+        function showTool(toolType) {
+            let toolContent = '';
+            
+            switch(toolType) {
+                case 'comparison':
+                    toolContent = `
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Crop Comparison Tool</h3>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option>Select first crop</option>
+                                    <option>Maize</option>
+                                    <option>Beans</option>
+                                    <option>Sorghum</option>
+                                </select>
+                                <select class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option>Select second crop</option>
+                                    <option>Sweet Potatoes</option>
+                                    <option>Groundnuts</option>
+                                    <option>Cassava</option>
+                                </select>
+                            </div>
+                            <button class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Compare Crops
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'soil':
+                    toolContent = `
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Soil Analysis Guide</h3>
+                            <p class="text-gray-600 dark:text-gray-300">Upload a photo of your soil or describe its characteristics for AI analysis.</p>
+                            <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
+                                <i class="fas fa-camera text-4xl text-gray-400 mb-4"></i>
+                                <p class="text-gray-500 dark:text-gray-400">Take a photo of your soil sample</p>
+                            </div>
+                            <button class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Analyze Soil
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'pest':
+                    toolContent = `
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Pest Identification</h3>
+                            <p class="text-gray-600 dark:text-gray-300">Describe the pest or upload a photo for instant identification and treatment recommendations.</p>
+                            <textarea class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white" rows="3" placeholder="Describe the pest symptoms or damage you're seeing..."></textarea>
+                            <button class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Identify & Get Treatment
+                            </button>
+                        </div>
+                    `;
+                    break;
+                    
+                case 'market':
+                    toolContent = `
+                        <div class="space-y-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">Current Market Prices</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                    <span>Maize (per kg)</span>
+                                    <span class="font-semibold text-green-600">$0.45 ↗</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                    <span>Beans (per kg)</span>
+                                    <span class="font-semibold text-red-600">$1.20 ↘</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                    <span>Sweet Potatoes (per kg)</span>
+                                    <span class="font-semibold text-green-600">$0.30 ↗</span>
+                                </div>
+                            </div>
+                            <button class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Get Detailed Market Report
+                            </button>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            showModal('Agricultural Tool', toolContent);
+        }
+
+        // Show modal dialog
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">${title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Global function to make it accessible from modal
+        window.askAIAboutCrop = askAIAboutCrop;
+    </script>
+</body>
+</html>

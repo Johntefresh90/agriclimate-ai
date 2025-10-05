@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        earth: '#a3a3a3',
+                        sky: '#0ea5e9',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .ai-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .chat-bubble {
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        .ai-thinking {
+            background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .voice-animation {
+            animation: pulse 1.5s infinite;
+        }
+        .language-flag {
+            width: 20px;
+            height: 15px;
+            display: inline-block;
+            background-size: cover;
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+        }
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background-color: #9ca3af;
+            display: inline-block;
+            margin-right: 4px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .scroll-smooth {
+            scroll-behavior: smooth;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300 scroll-smooth">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="#" class="block px-4 py-2 text-primary font-semibold hover:bg-primary hover:text-white">AI Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#voice-assistant" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Voice Assistant</a>
+                            <a href="#translation" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Real-time Translation</a>
+                            <a href="#expert-mode" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Expert Mode</a>
+                            <a href="#api-access" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">API Access</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <select id="languageSelector" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm pr-8 appearance-none">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇧🇷 Português</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="sw">🇰🇪 Kiswahili</option>
+                            <option value="am">🇪🇹 አማርኛ</option>
+                            <option value="yo">🇳🇬 Yorùbá</option>
+                            <option value="ha">🇳🇬 Hausa</option>
+                            <option value="ig">🇳🇬 Igbo</option>
+                            <option value="zu">🇿🇦 isiZulu</option>
+                            <option value="xh">🇿🇦 isiXhosa</option>
+                            <option value="af">🇿🇦 Afrikaans</option>
+                            <option value="so">🇸🇴 Soomaali</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-2 top-2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Market Hub</a>
+                            <a href="#" class="block text-primary font-semibold">AI Assistant</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="ai-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-robot mr-3"></i>AI Agricultural Assistant
+                </h1>
+                <p class="text-xl opacity-90 mb-6">Your multilingual AI expert for climate-smart agriculture - available in 20+ languages</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75">Always Available</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">20+</div>
+                        <div class="text-sm opacity-75">Languages</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">99.9%</div>
+                        <div class="text-sm opacity-75">Accuracy Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Assistant Features -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">
+                    <i class="fas fa-brain text-primary mr-2"></i>Intelligent Agricultural Assistance
+                </h2>
+                
+                <div class="grid md:grid-cols-4 gap-6 mb-8">
+                    <div class="feature-card bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-xl text-center">
+                        <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-leaf text-white text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Crop Guidance</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Expert advice on crop selection, planting, and harvesting</p>
+                    </div>
+
+                    <div class="feature-card bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-xl text-center">
+                        <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-cloud-sun text-white text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Weather Insights</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Climate analysis and weather-based recommendations</p>
+                    </div>
+
+                    <div class="feature-card bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 p-6 rounded-xl text-center">
+                        <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-paw text-white text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Livestock Care</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Animal health, breeding, and management advice</p>
+                    </div>
+
+                    <div class="feature-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 p-6 rounded-xl text-center">
+                        <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-chart-line text-white text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Market Intelligence</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300">Pricing trends and market opportunities</p>
+                    </div>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div class="grid md:grid-cols-3 gap-4">
+                    <button id="voiceAssistant" class="bg-gradient-to-r from-green-500 to-emerald-500 text-white p-4 rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300">
+                        <i class="fas fa-microphone text-2xl mb-2"></i>
+                        <h3 class="font-semibold">Voice Assistant</h3>
+                        <p class="text-sm opacity-90">Speak your questions naturally</p>
+                    </button>
+                    
+                    <button id="expertMode" class="bg-gradient-to-r from-blue-500 to-cyan-500 text-white p-4 rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all duration-300">
+                        <i class="fas fa-user-graduate text-2xl mb-2"></i>
+                        <h3 class="font-semibold">Expert Mode</h3>
+                        <p class="text-sm opacity-90">Advanced agricultural analysis</p>
+                    </button>
+                    
+                    <button id="quickTranslate" class="bg-gradient-to-r from-purple-500 to-indigo-500 text-white p-4 rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300">
+                        <i class="fas fa-language text-2xl mb-2"></i>
+                        <h3 class="font-semibold">Translate</h3>
+                        <p class="text-sm opacity-90">Instant language translation</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main AI Chat Interface -->
+    <section class="py-8">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Main Chat Area -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl h-[600px] flex flex-col">
+                        <!-- Chat Header -->
+                        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 ai-gradient rounded-full flex items-center justify-center">
+                                    <i class="fas fa-robot text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">AgriBot AI</h3>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">
+                                        <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                        Online • Speaking <span id="currentLanguage">English</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="clearChat" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                <button id="downloadChat" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button id="chatSettings" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages Area -->
+                        <div id="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-4">
+                            <div id="chatMessages">
+                                <!-- Welcome Message -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="w-8 h-8 ai-gradient rounded-full flex items-center justify-center flex-shrink-0">
+                                        <i class="fas fa-robot text-white text-sm"></i>
+                                    </div>
+                                    <div class="chat-bubble bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                                        <p id="welcomeMessage" class="text-gray-800 dark:text-white">Hello! I'm your AI agricultural assistant. I can help you with farming questions in any language. How can I assist you today?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input Area -->
+                        <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                            <!-- Input Controls -->
+                            <div class="flex items-center space-x-2 mb-4">
+                                <button id="voiceInput" class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                                <button id="attachFile" class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button id="takePicture" class="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                                <div class="flex-1"></div>
+                                <select id="chatLanguage" class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-sm">
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="sw">Kiswahili</option>
+                                    <option value="hi">हिन्दी</option>
+                                    <option value="ar">العربية</option>
+                                    <option value="zh">中文</option>
+                                    <option value="pt">Português</option>
+                                </select>
+                            </div>
+
+                            <!-- Message Input -->
+                            <div class="flex space-x-4">
+                                <input type="text" id="chatInput" placeholder="Ask me anything about agriculture..." 
+                                       class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                <button id="sendMessage" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+
+                            <!-- Quick Suggestions -->
+                            <div class="mt-4">
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mb-2">Quick suggestions:</div>
+                                <div id="quickSuggestions" class="flex flex-wrap gap-2">
+                                    <!-- Suggestions will be populated based on language -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Language Selector -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-globe text-primary mr-2"></i>Language Settings
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Preferred Language</label>
+                                <select id="preferredLanguage" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option value="en">🇺🇸 English</option>
+                                    <option value="es">🇪🇸 Español</option>
+                                    <option value="fr">🇫🇷 Français</option>
+                                    <option value="de">🇩🇪 Deutsch</option>
+                                    <option value="zh">🇨🇳 中文</option>
+                                    <option value="ja">🇯🇵 日本語</option>
+                                    <option value="ko">🇰🇷 한국어</option>
+                                    <option value="ar">🇸🇦 العربية</option>
+                                    <option value="hi">🇮🇳 हिन्दी</option>
+                                    <option value="pt">🇧🇷 Português</option>
+                                    <option value="ru">🇷🇺 Русский</option>
+                                    <option value="sw">🇰🇪 Kiswahili</option>
+                                    <option value="am">🇪🇹 አማርኛ</option>
+                                    <option value="yo">🇳🇬 Yorùbá</option>
+                                    <option value="ha">🇳🇬 Hausa</option>
+                                    <option value="ig">🇳🇬 Igbo</option>
+                                    <option value="zu">🇿🇦 isiZulu</option>
+                                    <option value="xh">🇿🇦 isiXhosa</option>
+                                    <option value="af">🇿🇦 Afrikaans</option>
+                                    <option value="so">🇸🇴 Soomaali</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="autoDetect" checked class="text-primary focus:ring-primary">
+                                <label for="autoDetect" class="text-sm text-gray-600 dark:text-gray-300">Auto-detect language</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="autoTranslate" class="text-primary focus:ring-primary">
+                                <label for="autoTranslate" class="text-sm text-gray-600 dark:text-gray-300">Auto-translate responses</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Capabilities -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-cogs text-primary mr-2"></i>AI Capabilities
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600 dark:text-gray-300">Voice Recognition</span>
+                                <div class="w-8 h-4 bg-green-500 rounded-full relative">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute right-0 top-0 shadow"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600 dark:text-gray-300">Image Analysis</span>
+                                <div class="w-8 h-4 bg-green-500 rounded-full relative">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute right-0 top-0 shadow"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600 dark:text-gray-300">Real-time Translation</span>
+                                <div class="w-8 h-4 bg-green-500 rounded-full relative">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute right-0 top-0 shadow"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600 dark:text-gray-300">Expert Knowledge</span>
+                                <div class="w-8 h-4 bg-green-500 rounded-full relative">
+                                    <div class="w-4 h-4 bg-white rounded-full absolute right-0 top-0 shadow"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Topics -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-history text-primary mr-2"></i>Recent Topics
+                        </h3>
+                        <div id="recentTopics" class="space-y-2">
+                            <button class="w-full text-left p-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                Crop rotation strategies
+                            </button>
+                            <button class="w-full text-left p-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                Pest identification
+                            </button>
+                            <button class="w-full text-left p-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                Weather alerts
+                            </button>
+                            <button class="w-full text-left p-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors">
+                                Market prices
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Support -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-question-circle text-primary mr-2"></i>Need Help?
+                        </h3>
+                        <div class="space-y-3">
+                            <button class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-book mr-2"></i>User Guide
+                            </button>
+                            <button class="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-headset mr-2"></i>Live Support
+                            </button>
+                            <button class="w-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-feedback mr-2"></i>Send Feedback
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Voice Assistant Modal -->
+    <div id="voiceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <div id="voiceIndicator" class="w-24 h-24 ai-gradient rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i id="voiceIcon" class="fas fa-microphone text-white text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Voice Assistant</h3>
+                <p id="voiceStatus" class="text-gray-600 dark:text-gray-300 mb-6">Click to start speaking</p>
+                <div class="space-y-4">
+                    <button id="startVoice" class="bg-primary text-white px-6 py-3 rounded-lg hover:bg-secondary transition-colors">
+                        <i class="fas fa-microphone mr-2"></i>Start Listening
+                    </button>
+                    <button id="closeVoiceModal" class="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors ml-3">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered climate-smart solutions and multilingual support for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">API Documentation</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Support Center</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-TECH</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Cookie Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Data Protection</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentLanguage = 'en';
+        let conversationHistory = [];
+        let isVoiceRecording = false;
+        let isAIResponding = false;
+        let recognition = null;
+        let synthesis = window.speechSynthesis;
+
+        // Language configurations
+        const languageConfig = {
+            en: {
+                name: 'English',
+                welcome: 'Hello! I\'m your AI agricultural assistant. I can help you with farming questions in any language. How can I assist you today?',
+                suggestions: [
+                    'What crops should I plant this season?',
+                    'How do I prepare for drought?',
+                    'Best practices for organic farming',
+                    'Market prices for my region'
+                ]
+            },
+            es: {
+                name: 'Español',
+                welcome: '¡Hola! Soy tu asistente agrícola de IA. Puedo ayudarte con preguntas de agricultura en cualquier idioma. ¿Cómo puedo asistirte hoy?',
+                suggestions: [
+                    '¿Qué cultivos debo plantar esta temporada?',
+                    '¿Cómo me preparo para la sequía?',
+                    'Mejores prácticas para agricultura orgánica',
+                    'Precios de mercado para mi región'
+                ]
+            },
+            fr: {
+                name: 'Français',
+                welcome: 'Bonjour! Je suis votre assistant agricole IA. Je peux vous aider avec des questions agricoles dans n\'importe quelle langue. Comment puis-je vous aider aujourd\'hui?',
+                suggestions: [
+                    'Quelles cultures dois-je planter cette saison?',
+                    'Comment me préparer à la sécheresse?',
+                    'Meilleures pratiques pour l\'agriculture biologique',
+                    'Prix du marché pour ma région'
+                ]
+            },
+            sw: {
+                name: 'Kiswahili',
+                welcome: 'Hujambo! Mimi ni msaidizi wako wa kilimo wa AI. Ninaweza kukusaidia na maswali ya kilimo kwa lugha yoyote. Ninawezaje kukusaidia leo?',
+                suggestions: [
+                    'Ni mazao gani nipande msimu huu?',
+                    'Ninajiandaaje kwa ukame?',
+                    'Mbinu bora za kilimo asili',
+                    'Bei za soko za eneo langu'
+                ]
+            },
+            hi: {
+                name: 'हिन्दी',
+                welcome: 'नमस्ते! मैं आपका AI कृषि सहायक हूं। मैं किसी भी भाषा में कृषि प्रश्नों में आपकी मदद कर सकता हूं। आज मैं आपकी कैसे सहायता कर सकता हूं?',
+                suggestions: [
+                    'इस मौसम में कौन सी फसल लगानी चाहिए?',
+                    'सूखे की तैयारी कैसे करें?',
+                    'जैविक खेती की सर्वोत्तम प्रथाएं',
+                    'मेरे क्षेत्र के बाजार भाव'
+                ]
+            },
+            ar: {
+                name: 'العربية',
+                welcome: 'مرحباً! أنا مساعدك الزراعي بالذكاء الاصطناعي. يمكنني مساعدتك في أسئلة الزراعة بأي لغة. كيف يمكنني مساعدتك اليوم؟',
+                suggestions: [
+                    'ما هي المحاصيل التي يجب أن أزرعها هذا الموسم؟',
+                    'كيف أستعد للجفاف؟',
+                    'أفضل ممارسات الزراعة العضوية',
+                    'أسعار السوق لمنطقتي'
+                ]
+            },
+            zh: {
+                name: '中文',
+                welcome: '您好！我是您的AI农业助手。我可以用任何语言帮助您解决农业问题。今天我能为您做些什么？',
+                suggestions: [
+                    '这个季节我应该种植什么作物？',
+                    '如何为干旱做准备？',
+                    '有机农业最佳实践',
+                    '我所在地区的市场价格'
+                ]
+            },
+            pt: {
+                name: 'Português',
+                welcome: 'Olá! Sou seu assistente agrícola de IA. Posso ajudá-lo com questões agrícolas em qualquer idioma. Como posso ajudá-lo hoje?',
+                suggestions: [
+                    'Que culturas devo plantar esta temporada?',
+                    'Como me preparar para a seca?',
+                    'Melhores práticas para agricultura orgânica',
+                    'Preços de mercado para minha região'
+                ]
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializePoeAPI();
+            setupEventListeners();
+            initializeSpeechRecognition();
+            updateLanguageInterface();
+            loadRecentTopics();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI responses
+        function initializePoeAPI() {
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('ai-assistant-handler', handleAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe
+        function handleAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    updateAIMessage(aiMessage.content);
+                } else if (aiMessage.status === 'complete') {
+                    finalizeAIMessage(aiMessage.content);
+                    isAIResponding = false;
+                    
+                    // Auto-translate if enabled and language is different
+                    if (document.getElementById('autoTranslate').checked && currentLanguage !== 'en') {
+                        translateMessage(aiMessage.content, currentLanguage);
+                    }
+                    
+                    // Text-to-speech if voice mode is active
+                    if (isVoiceRecording) {
+                        speakText(aiMessage.content, currentLanguage);
+                    }
+                } else if (aiMessage.status === 'error') {
+                    showAIError();
+                    isAIResponding = false;
+                }
+            }
+        }
+
+        // Send message to AI using Poe API with multilingual support
+        async function sendToAI(userMessage, language = currentLanguage) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            addChatMessage(userMessage, true);
+            showAIThinking();
+            
+            const contextPrompt = buildMultilingualAIPrompt(userMessage, language);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'ai-assistant-handler',
+                        stream: true,
+                        openChat: false
+                    });
+                } else {
+                    // Fallback to local AI simulation
+                    setTimeout(() => {
+                        const response = getLocalMultilingualAIResponse(userMessage, language);
+                        finalizeAIMessage(response);
+                        isAIResponding = false;
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('AI API error:', error);
+                showAIError();
+                isAIResponding = false;
+            }
+        }
+
+        // Build multilingual AI prompt
+        function buildMultilingualAIPrompt(userMessage, language) {
+            const detectedLanguage = detectLanguage(userMessage);
+            const responseLanguage = detectedLanguage || language;
+            
+            const conversationContext = conversationHistory.length > 0 ? 
+                `Previous conversation: ${conversationHistory.slice(-3).map(msg => `${msg.type}: ${msg.content}`).join(' | ')}` : 
+                '';
+            
+            const systemPrompt = `You are an expert multilingual agricultural advisor with deep knowledge in:
+- Climate-smart agriculture and sustainable farming
+- Crop management, soil health, and pest control
+- Livestock management and animal husbandry
+- Agricultural technology and modern farming techniques
+- Market analysis and agricultural economics
+- Environmental conservation and regenerative agriculture
+
+Language Instructions:
+- Detect the user's language from their message
+- Respond in the SAME language the user is using
+- If user uses English, respond in English
+- If user uses Spanish, respond in Spanish
+- If user uses French, respond in French
+- If user uses Swahili, respond in Swahili
+- If user uses Hindi, respond in Hindi
+- If user uses Arabic, respond in Arabic
+- If user uses Chinese, respond in Chinese
+- If user uses Portuguese, respond in Portuguese
+- For any other language, respond in that language
+- For greetings in any language, respond warmly in the same language
+
+Current user language preference: ${responseLanguage}
+User's current message language: ${detectedLanguage || 'auto-detect'}
+
+Guidelines:
+- For greetings (hello, hi, hola, bonjour, hujambo, namaste, مرحبا, 你好, olá), respond warmly as an agricultural expert
+- Provide specific, actionable advice with exact measurements and timelines
+- Consider local climate conditions and regional farming practices
+- Include sustainable and climate-smart farming recommendations
+- Be encouraging and supportive while being scientifically accurate
+- Ask clarifying questions when needed for better assistance
+
+${conversationContext}
+
+User's agricultural question: ${userMessage}
+
+Respond as a knowledgeable agricultural expert in the user's language:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Detect language from text
+        function detectLanguage(text) {
+            const languagePatterns = {
+                es: /\b(hola|buenos|días|gracias|por favor|cómo|qué|dónde|cuándo|español)\b/i,
+                fr: /\b(bonjour|salut|merci|s'il vous plaît|comment|que|où|quand|français)\b/i,
+                de: /\b(hallo|guten|tag|danke|bitte|wie|was|wo|wann|deutsch)\b/i,
+                pt: /\b(olá|oi|obrigado|por favor|como|que|onde|quando|português)\b/i,
+                sw: /\b(hujambo|jambo|asante|tafadhali|vipi|nini|wapi|lini|kiswahili)\b/i,
+                hi: /[\u0900-\u097F]|namaste|dhanyawad|kripaya/i,
+                ar: /[\u0600-\u06FF]|مرحبا|شكرا|من فضلك/i,
+                zh: /[\u4e00-\u9fff]|你好|谢谢|请/i,
+                ja: /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]|こんにちは|ありがとう/i,
+                ko: /[\uac00-\ud7af]|안녕하세요|감사합니다/i,
+                ru: /[\u0400-\u04FF]|привет|спасибо|пожалуйста/i
+            };
+            
+            for (const [lang, pattern] of Object.entries(languagePatterns)) {
+                if (pattern.test(text)) {
+                    return lang;
+                }
+            }
+            
+            return null; // No specific language detected
+        }
+
+        // Local multilingual AI response fallback
+        function getLocalMultilingualAIResponse(message, language) {
+            const lowerMessage = message.toLowerCase();
+            
+            // Greeting responses in different languages
+            const greetings = {
+                en: {
+                    patterns: /\b(hello|hi|hey|good morning|good afternoon|good evening|greetings)\b/i,
+                    response: "Hello! I'm your multilingual AI agricultural advisor. I'm here to help you with all your farming questions in any language you're comfortable with. Whether you need advice on crops, livestock, soil management, or market trends, I'm ready to assist. What agricultural challenge can I help you solve today?"
+                },
+                es: {
+                    patterns: /\b(hola|buenos días|buenas tardes|buenas noches|saludos)\b/i,
+                    response: "¡Hola! Soy tu asesor agrícola de IA multilingüe. Estoy aquí para ayudarte con todas tus preguntas sobre agricultura en cualquier idioma que te sientas cómodo. Ya sea que necesites consejos sobre cultivos, ganado, manejo del suelo o tendencias del mercado, estoy listo para ayudarte. ¿Qué desafío agrícola puedo ayudarte a resolver hoy?"
+                },
+                fr: {
+                    patterns: /\b(bonjour|salut|bonsoir|bonne journée)\b/i,
+                    response: "Bonjour! Je suis votre conseiller agricole IA multilingue. Je suis là pour vous aider avec toutes vos questions agricoles dans n'importe quelle langue avec laquelle vous êtes à l'aise. Que vous ayez besoin de conseils sur les cultures, l'élevage, la gestion des sols ou les tendances du marché, je suis prêt à vous aider. Quel défi agricole puis-je vous aider à résoudre aujourd'hui?"
+                },
+                sw: {
+                    patterns: /\b(hujambo|jambo|habari|salamu)\b/i,
+                    response: "Hujambo! Mimi ni mshauri wako wa kilimo wa AI wa lugha nyingi. Nipo hapa kukusaidia na maswali yako yote ya kilimo kwa lugha yoyote unayostarehe nayo. Iwe unahitaji ushauri kuhusu mazao, mifugo, usimamizi wa udongo au mielekeo ya soko, niko tayari kukusaidia. Ni changamoto gani ya kilimo ninaweza kukusaidia kutatua leo?"
+                },
+                hi: {
+                    patterns: /\b(नमस्ते|नमस्कार|सुप्रभात|शुभ संध्या)\b/i,
+                    response: "नमस्ते! मैं आपका बहुभाषी AI कृषि सलाहकार हूं। मैं यहां आपकी सभी कृषि संबंधी समस्याओं में किसी भी भाषा में सहायता करने के लिए हूं जिसमें आप सहज महसूस करते हैं। चाहे आपको फसलों, पशुधन, मिट्टी प्रबंधन या बाजार के रुझान के बारे में सलाह चाहिए, मैं मदद करने के लिए तैयार हूं। आज मैं किस कृषि चुनौती को हल करने में आपकी मदद कर सकता हूं?"
+                },
+                ar: {
+                    patterns: /\b(مرحبا|السلام عليكم|صباح الخير|مساء الخير)\b/i,
+                    response: "مرحباً! أنا مستشارك الزراعي متعدد اللغات بالذكاء الاصطناعي. أنا هنا لمساعدتك في جميع أسئلتك الزراعية بأي لغة تشعر بالراحة معها. سواء كنت تحتاج إلى نصائح حول المحاصيل أو الماشية أو إدارة التربة أو اتجاهات السوق، أنا مستعد للمساعدة. ما هو التحدي الزراعي الذي يمكنني مساعدتك في حله اليوم؟"
+                },
+                zh: {
+                    patterns: /\b(你好|您好|早上好|下午好|晚上好)\b/i,
+                    response: "您好！我是您的多语言AI农业顾问。我在这里用您舒适的任何语言帮助您解决所有农业问题。无论您需要关于作物、畜牧业、土壤管理或市场趋势的建议，我都准备为您提供帮助。今天我可以帮助您解决什么农业挑战？"
+                },
+                pt: {
+                    patterns: /\b(olá|oi|bom dia|boa tarde|boa noite)\b/i,
+                    response: "Olá! Sou seu consultor agrícola de IA multilíngue. Estou aqui para ajudá-lo com todas as suas questões agrícolas em qualquer idioma com o qual você se sinta confortável. Seja você precisando de conselhos sobre cultivos, pecuária, gestão do solo ou tendências de mercado, estou pronto para ajudar. Que desafio agrícola posso ajudá-lo a resolver hoje?"
+                }
+            };
+            
+            // Check for greetings in current language
+            const currentLangGreeting = greetings[language];
+            if (currentLangGreeting && currentLangGreeting.patterns.test(message)) {
+                return currentLangGreeting.response;
+            }
+            
+            // Check for greetings in any language
+            for (const [lang, greeting] of Object.entries(greetings)) {
+                if (greeting.patterns.test(message)) {
+                    return greeting.response;
+                }
+            }
+            
+            // Topic-specific responses (in current language)
+            const topicResponses = {
+                en: {
+                    crops: "For optimal crop selection, I recommend analyzing your soil type, local climate patterns, and market demand. Consider drought-resistant varieties like sorghum or millet for semi-arid regions, or high-value crops like tomatoes and peppers for areas with good water access. What's your specific location and farming goals?",
+                    weather: "Weather monitoring is crucial for successful farming. I recommend checking daily weather forecasts, setting up rain gauges, and monitoring soil moisture levels. Current climate change patterns suggest more irregular rainfall, so consider water conservation techniques like mulching and drip irrigation. What specific weather challenges are you facing?",
+                    livestock: "Successful livestock management requires attention to nutrition, health, and housing. For cattle, ensure adequate protein (14-16% for growing animals), provide clean water (30-50 gallons/day per cow), and maintain proper vaccination schedules. Which animals are you raising and what specific concerns do you have?",
+                    market: "Market timing is essential for profitability. Current trends show strong demand for organic produce (+15% annually) and climate-resistant seeds. Consider value-addition through processing, direct-to-consumer sales, and cooperative marketing. What products are you planning to sell?"
+                },
+                es: {
+                    crops: "Para una selección óptima de cultivos, recomiendo analizar su tipo de suelo, patrones climáticos locales y demanda del mercado. Considere variedades resistentes a la sequía como sorgo o mijo para regiones semiáridas, o cultivos de alto valor como tomates y pimientos para áreas con buen acceso al agua. ¿Cuál es su ubicación específica y objetivos agrícolas?",
+                    weather: "El monitoreo del clima es crucial para el éxito agrícola. Recomiendo verificar los pronósticos diarios, instalar pluviómetros y monitorear los niveles de humedad del suelo. Los patrones actuales del cambio climático sugieren precipitaciones más irregulares, así que considere técnicas de conservación de agua como mulching y riego por goteo. ¿Qué desafíos climáticos específicos está enfrentando?",
+                    livestock: "El manejo exitoso del ganado requiere atención a la nutrición, salud y alojamiento. Para el ganado, asegure proteína adecuada (14-16% para animales en crecimiento), proporcione agua limpia (114-189 litros/día por vaca), y mantenga horarios apropiados de vacunación. ¿Qué animales está criando y qué preocupaciones específicas tiene?",
+                    market: "El timing del mercado es esencial para la rentabilidad. Las tendencias actuales muestran fuerte demanda por productos orgánicos (+15% anualmente) y semillas resistentes al clima. Considere valor agregado a través del procesamiento, ventas directas al consumidor, y marketing cooperativo. ¿Qué productos planea vender?"
+                }
+            };
+            
+            // Detect topic and respond in appropriate language
+            if (lowerMessage.includes('crop') || lowerMessage.includes('plant') || lowerMessage.includes('cultivo') || lowerMessage.includes('mazao')) {
+                return topicResponses[language]?.crops || topicResponses.en.crops;
+            }
+            
+            if (lowerMessage.includes('weather') || lowerMessage.includes('climate') || lowerMessage.includes('clima') || lowerMessage.includes('hali ya hewa')) {
+                return topicResponses[language]?.weather || topicResponses.en.weather;
+            }
+            
+            if (lowerMessage.includes('livestock') || lowerMessage.includes('animal') || lowerMessage.includes('ganado') || lowerMessage.includes('mifugo')) {
+                return topicResponses[language]?.livestock || topicResponses.en.livestock;
+            }
+            
+            if (lowerMessage.includes('market') || lowerMessage.includes('price') || lowerMessage.includes('mercado') || lowerMessage.includes('soko')) {
+                return topicResponses[language]?.market || topicResponses.en.market;
+            }
+            
+            // Default response in user's language
+            const defaultResponses = {
+                en: "I'm here to help with all your agricultural questions! I can provide guidance on crops, weather, livestock, soil management, pest control, and market strategies. What specific farming challenge would you like assistance with?",
+                es: "¡Estoy aquí para ayudar con todas sus preguntas agrícolas! Puedo proporcionar orientación sobre cultivos, clima, ganado, manejo del suelo, control de plagas y estrategias de mercado. ¿Con qué desafío agrícola específico le gustaría ayuda?",
+                fr: "Je suis là pour vous aider avec toutes vos questions agricoles! Je peux vous donner des conseils sur les cultures, le climat, l'élevage, la gestion des sols, la lutte antiparasitaire et les stratégies de marché. Pour quel défi agricole spécifique aimeriez-vous de l'aide?",
+                sw: "Nipo hapa kusaidia na maswali yako yote ya kilimo! Ninaweza kutoa mwongozo kuhusu mazao, hali ya hewa, mifugo, usimamizi wa udongo, udhibiti wa wadudu, na mikakati ya soko. Ni changamoto gani maalum ya kilimo ungependa msaada?",
+                hi: "मैं आपके सभी कृषि प्रश्नों में मदद करने के लिए यहाँ हूँ! मैं फसलों, मौसम, पशुधन, मिट्टी प्रबंधन, कीट नियंत्रण, और बाजार रणनीतियों पर मार्गदर्शन प्रदान कर सकता हूँ। आप किस विशिष्ट कृषि चुनौती में सहायता चाहेंगे?",
+                ar: "أنا هنا للمساعدة في جميع أسئلتك الزراعية! يمكنني تقديم إرشادات حول المحاصيل والطقس والماشية وإدارة التربة ومكافحة الآفات واستراتيجيات السوق. ما هو التحدي الزراعي المحدد الذي تريد المساعدة فيه؟",
+                zh: "我在这里帮助解决您所有的农业问题！我可以提供关于作物、天气、畜牧业、土壤管理、害虫防治和市场策略的指导。您希望在哪个具体的农业挑战方面获得帮助？",
+                pt: "Estou aqui para ajudar com todas as suas questões agrícolas! Posso fornecer orientação sobre cultivos, clima, pecuária, gestão do solo, controle de pragas e estratégias de mercado. Com que desafio agrícola específico você gostaria de ajuda?"
+            };
+            
+            return defaultResponses[language] || defaultResponses.en;
+        }
+
+        // Chat message management functions
+        function addChatMessage(message, isUser = false) {
+            const container = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'justify-end' : ''}`;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="chat-bubble bg-primary text-white p-4 rounded-lg">
+                        <p>${message}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 ai-gradient rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="chat-bubble bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-800 dark:text-white">${message}</p>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Store in conversation history
+            conversationHistory.push({
+                type: isUser ? 'user' : 'assistant',
+                content: message,
+                language: currentLanguage,
+                timestamp: new Date().toISOString()
+            });
+            
+            // Save to recent topics
+            if (isUser) {
+                saveToRecentTopics(message);
+            }
+        }
+
+        function showAIThinking() {
+            const container = document.getElementById('chatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'aiThinking';
+            thinkingDiv.className = 'flex items-start space-x-3';
+            
+            thinkingDiv.innerHTML = `
+                <div class="w-8 h-8 ai-gradient rounded-full flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="chat-bubble bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateAIMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.innerHTML = `
+                    <div class="w-8 h-8 ai-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="chat-bubble bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-800 dark:text-white">${content}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function finalizeAIMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addChatMessage(content, false);
+        }
+
+        function showAIError() {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            
+            const errorMessages = {
+                en: "I apologize, but I'm having trouble responding right now. Please try asking your question again, or contact our support team for assistance.",
+                es: "Me disculpo, pero estoy teniendo problemas para responder ahora mismo. Por favor, intente hacer su pregunta nuevamente, o contacte a nuestro equipo de soporte para asistencia.",
+                fr: "Je m'excuse, mais j'ai des difficultés à répondre en ce moment. Veuillez essayer de poser votre question à nouveau, ou contactez notre équipe de support pour de l'aide.",
+                sw: "Naomba radhi, lakini nina matatizo ya kujibu sasa hivi. Tafadhali jaribu kuuliza swali lako tena, au wasiliana na timu yetu ya msaada.",
+                hi: "मुझे खेद है, लेकिन मुझे अभी जवाब देने में परेशानी हो रही है। कृपया अपना प्रश्न फिर से पूछने की कोशिश करें, या सहायता के लिए हमारी सहायता टीम से संपर्क करें।"
+            };
+            
+            addChatMessage(errorMessages[currentLanguage] || errorMessages.en, false);
+        }
+
+        // Initialize speech recognition
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = getLanguageCode(currentLanguage);
+                
+                recognition.onstart = function() {
+                    document.getElementById('voiceIcon').className = 'fas fa-microphone-slash text-white text-3xl voice-animation';
+                    document.getElementById('voiceStatus').textContent = 'Listening... Speak now';
+                };
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('chatInput').value = transcript;
+                    document.getElementById('voiceModal').classList.add('hidden');
+                    sendToAI(transcript, currentLanguage);
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    document.getElementById('voiceStatus').textContent = 'Error occurred. Try again.';
+                    document.getElementById('voiceIcon').className = 'fas fa-microphone text-white text-3xl';
+                };
+                
+                recognition.onend = function() {
+                    document.getElementById('voiceIcon').className = 'fas fa-microphone text-white text-3xl';
+                    document.getElementById('voiceStatus').textContent = 'Click to start speaking';
+                    isVoiceRecording = false;
+                };
+            }
+        }
+
+        // Text-to-speech function
+        function speakText(text, language) {
+            if (synthesis) {
+                synthesis.cancel(); // Stop any ongoing speech
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = getLanguageCode(language);
+                utterance.rate = 0.9;
+                utterance.pitch = 1;
+                
+                // Find a voice for the specified language
+                const voices = synthesis.getVoices();
+                const voice = voices.find(v => v.lang.startsWith(getLanguageCode(language))) || voices[0];
+                if (voice) {
+                    utterance.voice = voice;
+                }
+                
+                synthesis.speak(utterance);
+            }
+        }
+
+        // Get language code for speech API
+        function getLanguageCode(language) {
+            const languageCodes = {
+                en: 'en-US',
+                es: 'es-ES',
+                fr: 'fr-FR',
+                de: 'de-DE',
+                zh: 'zh-CN',
+                ja: 'ja-JP',
+                ko: 'ko-KR',
+                ar: 'ar-SA',
+                hi: 'hi-IN',
+                pt: 'pt-BR',
+                ru: 'ru-RU',
+                sw: 'sw-KE'
+            };
+            return languageCodes[language] || 'en-US';
+        }
+
+        // Translate message function
+        async function translateMessage(text, targetLanguage) {
+            // This would integrate with a translation API like Google Translate
+            // For demo purposes, we'll show a placeholder
+            const translatedMessage = `[Translated to ${languageConfig[targetLanguage]?.name || targetLanguage}]: ${text}`;
+            
+            // Add translated message as a system message
+            const container = document.getElementById('chatMessages');
+            const translateDiv = document.createElement('div');
+            translateDiv.className = 'flex justify-center my-2';
+            translateDiv.innerHTML = `
+                <div class="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm">
+                    <i class="fas fa-language mr-2"></i>${translatedMessage}
+                </div>
+            `;
+            container.appendChild(translateDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Update language interface
+        function updateLanguageInterface() {
+            const config = languageConfig[currentLanguage];
+            if (config) {
+                document.getElementById('welcomeMessage').textContent = config.welcome;
+                document.getElementById('currentLanguage').textContent = config.name;
+                updateQuickSuggestions();
+            }
+        }
+
+        // Update quick suggestions based on language
+        function updateQuickSuggestions() {
+            const container = document.getElementById('quickSuggestions');
+            const config = languageConfig[currentLanguage];
+            
+            container.innerHTML = '';
+            
+            if (config && config.suggestions) {
+                config.suggestions.forEach(suggestion => {
+                    const button = document.createElement('button');
+                    button.className = 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-primary hover:text-white transition-colors';
+                    button.textContent = suggestion;
+                    button.addEventListener('click', () => {
+                        document.getElementById('chatInput').value = suggestion;
+                        sendToAI(suggestion, currentLanguage);
+                    });
+                    container.appendChild(button);
+                });
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Language selectors
+            document.getElementById('languageSelector').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+                if (recognition) {
+                    recognition.lang = getLanguageCode(currentLanguage);
+                }
+            });
+
+            document.getElementById('preferredLanguage').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+                if (recognition) {
+                    recognition.lang = getLanguageCode(currentLanguage);
+                }
+            });
+
+            document.getElementById('chatLanguage').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+            });
+
+            // Chat functionality
+            document.getElementById('sendMessage').addEventListener('click', handleChatMessage);
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleChatMessage();
+                }
+            });
+
+            // Voice assistant
+            document.getElementById('voiceAssistant').addEventListener('click', function() {
+                document.getElementById('voiceModal').classList.remove('hidden');
+            });
+
+            document.getElementById('voiceInput').addEventListener('click', function() {
+                document.getElementById('voiceModal').classList.remove('hidden');
+            });
+
+            document.getElementById('startVoice').addEventListener('click', function() {
+                if (recognition) {
+                    isVoiceRecording = true;
+                    recognition.start();
+                } else {
+                    alert('Speech recognition is not supported in this browser.');
+                }
+            });
+
+            document.getElementById('closeVoiceModal').addEventListener('click', function() {
+                document.getElementById('voiceModal').classList.add('hidden');
+                if (recognition) {
+                    recognition.stop();
+                }
+            });
+
+            // Chat controls
+            document.getElementById('clearChat').addEventListener('click', clearChat);
+            document.getElementById('downloadChat').addEventListener('click', downloadChat);
+
+            // Feature buttons
+            document.getElementById('expertMode').addEventListener('click', () => {
+                sendToAI('Please switch to expert mode and provide advanced agricultural analysis capabilities.', currentLanguage);
+            });
+
+            document.getElementById('quickTranslate').addEventListener('click', () => {
+                showTranslationModal();
+            });
+
+            // Recent topics
+            document.getElementById('recentTopics').addEventListener('click', function(e) {
+                if (e.target.tagName === 'BUTTON') {
+                    const topic = e.target.textContent;
+                    document.getElementById('chatInput').value = topic;
+                    sendToAI(topic, currentLanguage);
+                }
+            });
+        }
+
+        // Handle chat message sending
+        function handleChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message && !isAIResponding) {
+                // Auto-detect language if enabled
+                if (document.getElementById('autoDetect').checked) {
+                    const detectedLang = detectLanguage(message);
+                    if (detectedLang && detectedLang !== currentLanguage) {
+                        currentLanguage = detectedLang;
+                        updateLanguageInterface();
+                        document.getElementById('chatLanguage').value = detectedLang;
+                    }
+                }
+                
+                sendToAI(message, currentLanguage);
+                input.value = '';
+            }
+        }
+
+        // Clear chat function
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 ai-gradient rounded-full flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="chat-bubble bg-gray-100 dark:bg-gray-700 p-4 rounded-lg">
+                        <p id="welcomeMessage" class="text-gray-800 dark:text-white">${languageConfig[currentLanguage]?.welcome || languageConfig.en.welcome}</p>
+                    </div>
+                </div>
+            `;
+            conversationHistory = [];
+        }
+
+        // Download chat function
+        function downloadChat() {
+            const chatContent = conversationHistory.map(msg => 
+                `[${msg.timestamp}] ${msg.type.toUpperCase()} (${msg.language}): ${msg.content}`
+            ).join('\n\n');
+            
+            const blob = new Blob([chatContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agriclimate-chat-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Save to recent topics
+        function saveToRecentTopics(message) {
+            const recentTopics = JSON.parse(localStorage.getItem('recentTopics') || '[]');
+            
+            // Add new topic (limit to first 50 characters)
+            const topic = message.length > 50 ? message.substring(0, 50) + '...' : message;
+            
+            if (!recentTopics.includes(topic)) {
+                recentTopics.unshift(topic);
+                
+                // Keep only last 10 topics
+                if (recentTopics.length > 10) {
+                    recentTopics.pop();
+                }
+                
+                localStorage.setItem('recentTopics', JSON.stringify(recentTopics));
+                updateRecentTopicsDisplay();
+            }
+        }
+
+        // Load recent topics
+        function loadRecentTopics() {
+            updateRecentTopicsDisplay();
+        }
+
+        // Update recent topics display
+        function updateRecentTopicsDisplay() {
+            const recentTopics = JSON.parse(localStorage.getItem('recentTopics') || '[]');
+            const container = document.getElementById('recentTopics');
+            
+            container.innerHTML = '';
+            
+            if (recentTopics.length === 0) {
+                container.innerHTML = `
+                    <div class="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                        Your recent topics will appear here
+                    </div>
+                `;
+            } else {
+                recentTopics.forEach(topic => {
+                    const button = document.createElement('button');
+                    button.className = 'w-full text-left p-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors';
+                    button.textContent = topic;
+                    container.appendChild(button);
+                });
+            }
+        }
+
+        // Show translation modal
+        function showTranslationModal() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">Quick Translation</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">Text to translate</label>
+                            <textarea id="translateText" rows="3" placeholder="Enter text to translate..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">From</label>
+                                <select id="fromLanguage" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option value="auto">Auto-detect</option>
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="sw">Kiswahili</option>
+                                    <option value="hi">हिन्दी</option>
+                                    <option value="ar">العربية</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-1">To</label>
+                                <select id="toLanguage" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="sw">Kiswahili</option>
+                                    <option value="hi">हिन्दी</option>
+                                    <option value="ar">العربية</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="performTranslation()" class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                            <i class="fas fa-language mr-2"></i>Translate
+                        </button>
+                        <div id="translationResult" class="hidden mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                            <div class="text-sm text-gray-600 dark:text-gray-300 mb-1">Translation:</div>
+                            <div id="translatedText" class="text-gray-800 dark:text-white"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Perform translation (demo function)
+        function performTranslation() {
+            const text = document.getElementById('translateText').value;
+            const fromLang = document.getElementById('fromLanguage').value;
+            const toLang = document.getElementById('toLanguage').value;
+            
+            if (!text.trim()) {
+                alert('Please enter text to translate');
+                return;
+            }
+            
+            // Demo translation - in real implementation, this would call a translation API
+            const demoTranslations = {
+                'en-es': 'Traducción de demostración del texto',
+                'en-fr': 'Traduction de démonstration du texte',
+                'en-sw': 'Tafsiri ya onyesho ya maandishi',
+                'en-hi': 'पाठ का डेमो अनुवाद',
+                'en-ar': 'ترجمة تجريبية للنص'
+            };
+            
+            const translationKey = `${fromLang === 'auto' ? 'en' : fromLang}-${toLang}`;
+            const translation = demoTranslations[translationKey] || `[Demo translation to ${toLang}]: ${text}`;
+            
+            document.getElementById('translatedText').textContent = translation;
+            document.getElementById('translationResult').classList.remove('hidden');
+        }
+
+        // Global functions for modal access
+        window.performTranslation = performTranslation;
+    </script>
+</body>
+</html>

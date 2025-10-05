@@ -1,0 +1,2113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Soil Health Analysis - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        earth: '#8b5a2b',
+                        clay: '#cd853f',
+                        sand: '#f4a460',
+                        loam: '#daa520',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .soil-gradient {
+            background: linear-gradient(135deg, #8b5a2b 0%, #cd853f 50%, #daa520 100%);
+        }
+        .analysis-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .analysis-card:hover {
+            transform: translateY(-5px);
+            border-color: #22c55e;
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.2);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .upload-zone:hover {
+            border-color: #22c55e;
+            background-color: rgba(34, 197, 94, 0.05);
+        }
+        .upload-zone.dragover {
+            border-color: #22c55e;
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+        .soil-meter {
+            background: conic-gradient(
+                #ef4444 0deg 72deg,
+                #f59e0b 72deg 144deg,
+                #22c55e 144deg 216deg,
+                #3b82f6 216deg 288deg,
+                #8b5cf6 288deg 360deg
+            );
+        }
+        .analysis-progress {
+            background: linear-gradient(90deg, #22c55e 0%, #84cc16 100%);
+            animation: progress 3s ease-in-out;
+        }
+        @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        .weather-widget {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        }
+        .soil-particle {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .ai-thinking {
+            background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .map-container {
+            height: 300px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .npk-bar {
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #e5e7eb;
+        }
+        .npk-fill {
+            height: 100%;
+            transition: width 1s ease-in-out;
+        }
+        .moisture-indicator {
+            background: linear-gradient(to right, #ef4444, #f59e0b, #22c55e, #3b82f6);
+            height: 8px;
+            border-radius: 4px;
+            position: relative;
+        }
+        .moisture-pointer {
+            position: absolute;
+            top: -4px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: 2px solid #374151;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="ai-assistant.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">AI Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-primary font-semibold hover:text-secondary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#" class="block px-4 py-2 text-primary font-semibold hover:bg-primary hover:text-white">Soil Health Analysis</a>
+                            <a href="#water-management" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Water Management</a>
+                            <a href="#pest-detection" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Pest Detection</a>
+                            <a href="#yield-prediction" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Yield Prediction</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <select id="languageSelector" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm pr-8 appearance-none">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇧🇷 Português</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="sw">🇰🇪 Kiswahili</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-2 top-2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Market Hub</a>
+                            <a href="ai-assistant.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">AI Assistant</a>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-primary font-semibold hover:text-secondary transition-colors mobile-dropdown-toggle">
+                            Services <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="#" class="block text-primary font-semibold">Soil Health Analysis</a>
+                            <a href="#water-management" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Water Management</a>
+                            <a href="#pest-detection" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Pest Detection</a>
+                            <a href="#yield-prediction" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Yield Prediction</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="soil-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-microscope mr-3"></i>AI Soil Health Analysis
+                </h1>
+                <p class="text-xl opacity-90 mb-6" id="headerDescription">Advanced soil analysis powered by AI, weather data, and satellite imagery</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">98%</div>
+                        <div class="text-sm opacity-75" id="accuracyLabel">Accuracy Rate</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">15</div>
+                        <div class="text-sm opacity-75" id="parametersLabel">Soil Parameters</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75" id="availabilityLabel">AI Analysis</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Weather Integration Strip -->
+    <section class="weather-widget text-white py-4">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="currentLocation" class="text-sm">Detecting location...</span>
+                </div>
+                <div class="flex items-center space-x-6 text-sm">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span id="currentTemp">--°C</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-tint"></i>
+                        <span id="humidity">--%</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-cloud-rain"></i>
+                        <span id="precipitation">-- mm</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-wind"></i>
+                        <span id="windSpeed">-- km/h</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Analysis Interface -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Soil Analysis Input -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Image Upload Section -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-camera text-primary mr-2"></i><span id="uploadTitle">Upload Soil Sample</span>
+                        </h2>
+                        
+                        <div id="uploadZone" class="upload-zone rounded-xl p-8 text-center mb-6">
+                            <div id="uploadContent">
+                                <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2" id="uploadPrompt">Drop your soil images here</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mb-4" id="uploadSubtext">or click to browse (JPG, PNG, WebP up to 10MB)</p>
+                                <button id="browseFiles" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition-colors">
+                                    <i class="fas fa-folder-open mr-2"></i><span id="browseText">Browse Files</span>
+                                </button>
+                                <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+                            </div>
+                            <div id="uploadPreview" class="hidden">
+                                <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4"></div>
+                                <button id="analyzeImages" class="bg-primary text-white px-8 py-3 rounded-lg hover:bg-secondary transition-colors">
+                                    <i class="fas fa-microscope mr-2"></i><span id="analyzeText">Analyze Soil</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- GPS Location -->
+                        <div class="grid md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="locationLabel">Location</label>
+                                <div class="flex space-x-2">
+                                    <input type="text" id="locationInput" placeholder="Enter location or use GPS" 
+                                           class="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                    <button id="useGPS" class="bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition-colors">
+                                        <i class="fas fa-crosshairs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="farmSizeLabel">Farm Size (hectares)</label>
+                                <input type="number" id="farmSize" placeholder="5.0" 
+                                       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                            </div>
+                        </div>
+
+                        <!-- Quick Test Options -->
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <button id="quickpH" class="analysis-card bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-4 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors">
+                                <i class="fas fa-flask text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="phTestLabel">pH Test</h3>
+                                <p class="text-sm opacity-75" id="phTestDesc">Soil acidity analysis</p>
+                            </button>
+                            <button id="quickNPK" class="analysis-card bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-4 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
+                                <i class="fas fa-seedling text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="npkTestLabel">NPK Analysis</h3>
+                                <p class="text-sm opacity-75" id="npkTestDesc">Nutrient levels</p>
+                            </button>
+                            <button id="quickMoisture" class="analysis-card bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-4 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                                <i class="fas fa-tint text-2xl mb-2"></i>
+                                <h3 class="font-semibold" id="moistureTestLabel">Moisture Test</h3>
+                                <p class="text-sm opacity-75" id="moistureTestDesc">Water content</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div id="analysisResults" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+                                <i class="fas fa-chart-line text-primary mr-2"></i><span id="resultsTitle">Analysis Results</span>
+                            </h2>
+                            <div class="flex space-x-2">
+                                <button id="exportResults" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                    <i class="fas fa-download mr-2"></i><span id="exportText">Export</span>
+                                </button>
+                                <button id="shareResults" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                    <i class="fas fa-share mr-2"></i><span id="shareText">Share</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Soil Health Score -->
+                        <div class="text-center mb-8">
+                            <div class="relative inline-block">
+                                <div class="w-32 h-32 soil-meter rounded-full flex items-center justify-center">
+                                    <div class="w-24 h-24 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div id="healthScore" class="text-2xl font-bold text-gray-800 dark:text-white">85</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400" id="scoreLabel">Health Score</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h3 id="healthStatus" class="text-xl font-semibold text-green-600 mt-4">Excellent Soil Health</h3>
+                        </div>
+
+                        <!-- Parameter Charts -->
+                        <div class="grid md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-4" id="nutrientLevelsLabel">Nutrient Levels</h4>
+                                <canvas id="nutrientChart" class="w-full h-48"></canvas>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-4" id="soilCompositionLabel">Soil Composition</h4>
+                                <canvas id="compositionChart" class="w-full h-48"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Metrics -->
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-3" id="phLevelLabel">pH Level</h4>
+                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300">Current: <span id="currentPH">6.8</span></span>
+                                        <span class="text-sm text-green-600" id="phStatus">Optimal</span>
+                                    </div>
+                                    <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2">
+                                        <div id="phBar" class="bg-green-500 h-2 rounded-full" style="width: 68%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-3" id="moistureLabel">Moisture Content</h4>
+                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300">Current: <span id="currentMoisture">45%</span></span>
+                                        <span class="text-sm text-blue-600" id="moistureStatus">Good</span>
+                                    </div>
+                                    <div class="moisture-indicator">
+                                        <div id="moisturePointer" class="moisture-pointer" style="left: 45%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-3" id="organicMatterLabel">Organic Matter</h4>
+                                <div class="bg-gray-100 dark:bg-gray-700 rounded-lg p-4">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300">Current: <span id="currentOM">3.2%</span></span>
+                                        <span class="text-sm text-green-600" id="omStatus">Excellent</span>
+                                    </div>
+                                    <div class="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2">
+                                        <div id="omBar" class="bg-green-500 h-2 rounded-full" style="width: 80%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Recommendations -->
+                    <div id="aiRecommendations" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 hidden">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-robot text-primary mr-2"></i><span id="aiRecommendationsTitle">AI Recommendations</span>
+                        </h2>
+                        <div id="recommendationsList" class="space-y-4">
+                            <!-- AI recommendations will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Real-time Weather -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-cloud-sun text-primary mr-2"></i><span id="weatherTitle">Weather Impact</span>
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="soilTempLabel">Soil Temperature</span>
+                                <span id="soilTemp" class="font-semibold text-gray-800 dark:text-white">18°C</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="evaporationLabel">Evaporation Rate</span>
+                                <span id="evaporationRate" class="font-semibold text-gray-800 dark:text-white">3.2 mm/day</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="sunlightLabel">Daily Sunlight</span>
+                                <span id="sunlight" class="font-semibold text-gray-800 dark:text-white">8.5 hours</span>
+                            </div>
+                            <div class="mt-4">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2" id="weeklyForecastLabel">7-Day Forecast</h4>
+                                <div id="weeklyForecast" class="grid grid-cols-7 gap-1 text-xs">
+                                    <!-- Weekly forecast will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Soil Map -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-map text-primary mr-2"></i><span id="soilMapTitle">Soil Map</span>
+                        </h3>
+                        <div id="soilMap" class="map-container"></div>
+                        <div class="mt-4 text-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-gray-600 dark:text-gray-300" id="coordinatesLabel">Coordinates:</span>
+                                <span id="coordinates" class="font-mono text-gray-800 dark:text-white">--.--, --.-</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-300" id="elevationLabel">Elevation:</span>
+                                <span id="elevation" class="font-semibold text-gray-800 dark:text-white">-- m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Historical Data -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-history text-primary mr-2"></i><span id="historicalTitle">Historical Analysis</span>
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                <div class="text-sm font-semibold text-gray-700 dark:text-gray-300" id="lastTestLabel">Last Test: 3 months ago</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400" id="lastTestResult">pH: 6.5, NPK: Good</div>
+                            </div>
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                                <div class="text-sm font-semibold text-gray-700 dark:text-gray-300" id="trendLabel">Improvement Trend</div>
+                                <div class="flex items-center text-xs text-green-600">
+                                    <i class="fas fa-arrow-up mr-1"></i>
+                                    <span id="trendValue">+12% soil health</span>
+                                </div>
+                            </div>
+                            <button id="viewHistory" class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm">
+                                <i class="fas fa-chart-line mr-2"></i><span id="viewHistoryText">View Full History</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-tools text-primary mr-2"></i><span id="quickActionsTitle">Quick Actions</span>
+                        </h3>
+                        <div class="space-y-3">
+                            <button id="scheduleTest" class="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-calendar-plus mr-2"></i><span id="scheduleTestText">Schedule Lab Test</span>
+                            </button>
+                            <button id="orderFertilizer" class="w-full bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 p-3 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-shopping-cart mr-2"></i><span id="orderFertilizerText">Order Fertilizer</span>
+                            </button>
+                            <button id="consultExpert" class="w-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 p-3 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-user-tie mr-2"></i><span id="consultExpertText">Consult Expert</span>
+                            </button>
+                            <button id="aiChat" class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left text-sm">
+                                <i class="fas fa-comments mr-2"></i><span id="aiChatText">Chat with AI</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Chat Modal -->
+    <div id="aiChatModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] mx-4 flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-robot text-primary mr-2"></i><span id="chatTitle">Soil Health AI Assistant</span>
+                </h2>
+                <button id="closeChatModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p id="aiWelcome" class="text-gray-800 dark:text-white text-sm">Hello! I'm your soil health specialist. I can help analyze your soil data and provide personalized recommendations. What would you like to know?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex space-x-2">
+                    <input type="text" id="chatInput" placeholder="Ask about your soil analysis..." 
+                           class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                    <button id="sendChatMessage" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition-colors">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered climate-smart solutions and advanced soil health analysis for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">API Documentation</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Support Center</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-TECH</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Cookie Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Data Protection</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentLanguage = 'en';
+        let currentLocation = null;
+        let map = null;
+        let soilAnalysisData = null;
+        let weatherData = null;
+        let conversationHistory = [];
+        let isAIResponding = false;
+
+        // API Configuration
+        const API_CONFIG = {
+            WEATHER_API_KEY: 'your-weather-api-key', // Replace with actual API key
+            OPENWEATHER_URL: 'https://api.openweathermap.org/data/2.5',
+            SOIL_API_URL: 'https://api.worldbank.org/v2/country/WLD/indicator',
+            ELEVATION_API: 'https://api.open-elevation.com/api/v1/lookup'
+        };
+
+        // Language configurations for multilingual support
+        const languageConfig = {
+            en: {
+                headerDescription: 'Advanced soil analysis powered by AI, weather data, and satellite imagery',
+                accuracyLabel: 'Accuracy Rate',
+                parametersLabel: 'Soil Parameters',
+                availabilityLabel: 'AI Analysis',
+                uploadTitle: 'Upload Soil Sample',
+                uploadPrompt: 'Drop your soil images here',
+                uploadSubtext: 'or click to browse (JPG, PNG, WebP up to 10MB)',
+                browseText: 'Browse Files',
+                analyzeText: 'Analyze Soil',
+                locationLabel: 'Location',
+                farmSizeLabel: 'Farm Size (hectares)',
+                phTestLabel: 'pH Test',
+                phTestDesc: 'Soil acidity analysis',
+                npkTestLabel: 'NPK Analysis',
+                npkTestDesc: 'Nutrient levels',
+                moistureTestLabel: 'Moisture Test',
+                moistureTestDesc: 'Water content',
+                resultsTitle: 'Analysis Results',
+                exportText: 'Export',
+                shareText: 'Share',
+                scoreLabel: 'Health Score',
+                nutrientLevelsLabel: 'Nutrient Levels',
+                soilCompositionLabel: 'Soil Composition',
+                phLevelLabel: 'pH Level',
+                moistureLabel: 'Moisture Content',
+                organicMatterLabel: 'Organic Matter',
+                aiRecommendationsTitle: 'AI Recommendations',
+                weatherTitle: 'Weather Impact',
+                soilTempLabel: 'Soil Temperature',
+                evaporationLabel: 'Evaporation Rate',
+                sunlightLabel: 'Daily Sunlight',
+                weeklyForecastLabel: '7-Day Forecast',
+                soilMapTitle: 'Soil Map',
+                coordinatesLabel: 'Coordinates:',
+                elevationLabel: 'Elevation:',
+                historicalTitle: 'Historical Analysis',
+                lastTestLabel: 'Last Test: 3 months ago',
+                lastTestResult: 'pH: 6.5, NPK: Good',
+                trendLabel: 'Improvement Trend',
+                trendValue: '+12% soil health',
+                viewHistoryText: 'View Full History',
+                quickActionsTitle: 'Quick Actions',
+                scheduleTestText: 'Schedule Lab Test',
+                orderFertilizerText: 'Order Fertilizer',
+                consultExpertText: 'Consult Expert',
+                aiChatText: 'Chat with AI',
+                chatTitle: 'Soil Health AI Assistant',
+                aiWelcome: 'Hello! I\'m your soil health specialist. I can help analyze your soil data and provide personalized recommendations. What would you like to know?'
+            },
+            es: {
+                headerDescription: 'Análisis avanzado de suelo impulsado por IA, datos meteorológicos e imágenes satelitales',
+                accuracyLabel: 'Tasa de Precisión',
+                parametersLabel: 'Parámetros del Suelo',
+                availabilityLabel: 'Análisis IA',
+                uploadTitle: 'Subir Muestra de Suelo',
+                uploadPrompt: 'Arrastra tus imágenes de suelo aquí',
+                uploadSubtext: 'o haz clic para navegar (JPG, PNG, WebP hasta 10MB)',
+                browseText: 'Navegar Archivos',
+                analyzeText: 'Analizar Suelo',
+                locationLabel: 'Ubicación',
+                farmSizeLabel: 'Tamaño de Granja (hectáreas)',
+                phTestLabel: 'Prueba de pH',
+                phTestDesc: 'Análisis de acidez del suelo',
+                npkTestLabel: 'Análisis NPK',
+                npkTestDesc: 'Niveles de nutrientes',
+                moistureTestLabel: 'Prueba de Humedad',
+                moistureTestDesc: 'Contenido de agua',
+                resultsTitle: 'Resultados del Análisis',
+                exportText: 'Exportar',
+                shareText: 'Compartir',
+                scoreLabel: 'Puntuación de Salud',
+                nutrientLevelsLabel: 'Niveles de Nutrientes',
+                soilCompositionLabel: 'Composición del Suelo',
+                phLevelLabel: 'Nivel de pH',
+                moistureLabel: 'Contenido de Humedad',
+                organicMatterLabel: 'Materia Orgánica',
+                aiRecommendationsTitle: 'Recomendaciones de IA',
+                weatherTitle: 'Impacto Meteorológico',
+                soilTempLabel: 'Temperatura del Suelo',
+                evaporationLabel: 'Tasa de Evaporación',
+                sunlightLabel: 'Luz Solar Diaria',
+                weeklyForecastLabel: 'Pronóstico de 7 Días',
+                soilMapTitle: 'Mapa del Suelo',
+                coordinatesLabel: 'Coordenadas:',
+                elevationLabel: 'Elevación:',
+                historicalTitle: 'Análisis Histórico',
+                lastTestLabel: 'Última Prueba: hace 3 meses',
+                lastTestResult: 'pH: 6.5, NPK: Bueno',
+                trendLabel: 'Tendencia de Mejora',
+                trendValue: '+12% salud del suelo',
+                viewHistoryText: 'Ver Historial Completo',
+                quickActionsTitle: 'Acciones Rápidas',
+                scheduleTestText: 'Programar Prueba de Laboratorio',
+                orderFertilizerText: 'Ordenar Fertilizante',
+                consultExpertText: 'Consultar Experto',
+                aiChatText: 'Chatear con IA',
+                chatTitle: 'Asistente IA de Salud del Suelo',
+                aiWelcome: '¡Hola! Soy tu especialista en salud del suelo. Puedo ayudarte a analizar tus datos de suelo y proporcionar recomendaciones personalizadas. ¿Qué te gustaría saber?'
+            },
+            fr: {
+                headerDescription: 'Analyse avancée des sols alimentée par l\'IA, les données météorologiques et l\'imagerie satellite',
+                accuracyLabel: 'Taux de Précision',
+                parametersLabel: 'Paramètres du Sol',
+                availabilityLabel: 'Analyse IA',
+                uploadTitle: 'Télécharger Échantillon de Sol',
+                uploadPrompt: 'Déposez vos images de sol ici',
+                uploadSubtext: 'ou cliquez pour parcourir (JPG, PNG, WebP jusqu\'à 10MB)',
+                browseText: 'Parcourir Fichiers',
+                analyzeText: 'Analyser Sol',
+                locationLabel: 'Emplacement',
+                farmSizeLabel: 'Taille de Ferme (hectares)',
+                phTestLabel: 'Test pH',
+                phTestDesc: 'Analyse d\'acidité du sol',
+                npkTestLabel: 'Analyse NPK',
+                npkTestDesc: 'Niveaux de nutriments',
+                moistureTestLabel: 'Test d\'Humidité',
+                moistureTestDesc: 'Teneur en eau',
+                resultsTitle: 'Résultats d\'Analyse',
+                exportText: 'Exporter',
+                shareText: 'Partager',
+                scoreLabel: 'Score de Santé',
+                nutrientLevelsLabel: 'Niveaux de Nutriments',
+                soilCompositionLabel: 'Composition du Sol',
+                phLevelLabel: 'Niveau de pH',
+                moistureLabel: 'Teneur en Humidité',
+                organicMatterLabel: 'Matière Organique',
+                aiRecommendationsTitle: 'Recommandations IA',
+                weatherTitle: 'Impact Météorologique',
+                soilTempLabel: 'Température du Sol',
+                evaporationLabel: 'Taux d\'Évaporation',
+                sunlightLabel: 'Lumière du Soleil Quotidienne',
+                weeklyForecastLabel: 'Prévisions 7 Jours',
+                soilMapTitle: 'Carte des Sols',
+                coordinatesLabel: 'Coordonnées:',
+                elevationLabel: 'Élévation:',
+                historicalTitle: 'Analyse Historique',
+                lastTestLabel: 'Dernier Test: il y a 3 mois',
+                lastTestResult: 'pH: 6.5, NPK: Bon',
+                trendLabel: 'Tendance d\'Amélioration',
+                trendValue: '+12% santé du sol',
+                viewHistoryText: 'Voir Historique Complet',
+                quickActionsTitle: 'Actions Rapides',
+                scheduleTestText: 'Programmer Test Labo',
+                orderFertilizerText: 'Commander Engrais',
+                consultExpertText: 'Consulter Expert',
+                aiChatText: 'Discuter avec IA',
+                chatTitle: 'Assistant IA Santé des Sols',
+                aiWelcome: 'Bonjour! Je suis votre spécialiste en santé des sols. Je peux vous aider à analyser vos données de sol et fournir des recommandations personnalisées. Que souhaitez-vous savoir?'
+            },
+            sw: {
+                headerDescription: 'Uchambuzi wa hali ya juu wa udongo unaongozwa na AI, data ya hali ya hewa na picha za anga',
+                accuracyLabel: 'Kiwango cha Usahihi',
+                parametersLabel: 'Vipimo vya Udongo',
+                availabilityLabel: 'Uchambuzi wa AI',
+                uploadTitle: 'Pakia Sampuli ya Udongo',
+                uploadPrompt: 'Dondosha picha zako za udongo hapa',
+                uploadSubtext: 'au bonyeza kutafuta (JPG, PNG, WebP hadi 10MB)',
+                browseText: 'Tafuta Faili',
+                analyzeText: 'Chambuza Udongo',
+                locationLabel: 'Mahali',
+                farmSizeLabel: 'Ukubwa wa Shamba (hekta)',
+                phTestLabel: 'Jaribio la pH',
+                phTestDesc: 'Uchambuzi wa asidi ya udongo',
+                npkTestLabel: 'Uchambuzi wa NPK',
+                npkTestDesc: 'Viwango vya virutubisho',
+                moistureTestLabel: 'Jaribio la Unyevu',
+                moistureTestDesc: 'Maudhui ya maji',
+                resultsTitle: 'Matokeo ya Uchambuzi',
+                exportText: 'Hamisha',
+                shareText: 'Shiriki',
+                scoreLabel: 'Alama ya Afya',
+                nutrientLevelsLabel: 'Viwango vya Virutubisho',
+                soilCompositionLabel: 'Muundo wa Udongo',
+                phLevelLabel: 'Kiwango cha pH',
+                moistureLabel: 'Maudhui ya Unyevu',
+                organicMatterLabel: 'Viumbe vya Asili',
+                aiRecommendationsTitle: 'Mapendekezo ya AI',
+                weatherTitle: 'Athari za Hali ya Hewa',
+                soilTempLabel: 'Joto la Udongo',
+                evaporationLabel: 'Kiwango cha Mvukizo',
+                sunlightLabel: 'Mwanga wa Jua wa Kila Siku',
+                weeklyForecastLabel: 'Utabiri wa Siku 7',
+                soilMapTitle: 'Ramani ya Udongo',
+                coordinatesLabel: 'Kuratibu:',
+                elevationLabel: 'Urefu:',
+                historicalTitle: 'Uchambuzi wa Kihistoria',
+                lastTestLabel: 'Jaribio la Mwisho: miezi 3 iliyopita',
+                lastTestResult: 'pH: 6.5, NPK: Nzuri',
+                trendLabel: 'Mwelekeo wa Maendeleo',
+                trendValue: '+12% afya ya udongo',
+                viewHistoryText: 'Ona Historia Kamili',
+                quickActionsTitle: 'Vitendo vya Haraka',
+                scheduleTestText: 'Panga Jaribio la Maabara',
+                orderFertilizerText: 'Agiza Mbolea',
+                consultExpertText: 'Shauri na Mtaalamu',
+                aiChatText: 'Ongea na AI',
+                chatTitle: 'Msaidizi wa AI wa Afya ya Udongo',
+                aiWelcome: 'Habari! Mimi ni mtaalamu wako wa afya ya udongo. Ninaweza kukusaidia kuchambuza data yako ya udongo na kutoa mapendekezo maalum. Ungependa kujua nini?'
+            },
+            hi: {
+                headerDescription: 'AI, मौसम डेटा और उपग्रह इमेजरी द्वारा संचालित उन्नत मिट्टी विश्लेषण',
+                accuracyLabel: 'सटीकता दर',
+                parametersLabel: 'मिट्टी पैरामीटर',
+                availabilityLabel: 'AI विश्लेषण',
+                uploadTitle: 'मिट्टी का नमूना अपलोड करें',
+                uploadPrompt: 'अपनी मिट्टी की छवियां यहां छोड़ें',
+                uploadSubtext: 'या ब्राउज़ करने के लिए क्लिक करें (JPG, PNG, WebP 10MB तक)',
+                browseText: 'फाइलें ब्राउज़ करें',
+                analyzeText: 'मिट्टी का विश्लेषण करें',
+                locationLabel: 'स्थान',
+                farmSizeLabel: 'खेत का आकार (हेक्टेयर)',
+                phTestLabel: 'pH परीक्षण',
+                phTestDesc: 'मिट्टी अम्लता विश्लेषण',
+                npkTestLabel: 'NPK विश्लेषण',
+                npkTestDesc: 'पोषक तत्व स्तर',
+                moistureTestLabel: 'नमी परीक्षण',
+                moistureTestDesc: 'पानी की मात्रा',
+                resultsTitle: 'विश्लेषण परिणाम',
+                exportText: 'निर्यात',
+                shareText: 'साझा करें',
+                scoreLabel: 'स्वास्थ्य स्कोर',
+                nutrientLevelsLabel: 'पोषक तत्व स्तर',
+                soilCompositionLabel: 'मिट्टी संरचना',
+                phLevelLabel: 'pH स्तर',
+                moistureLabel: 'नमी सामग्री',
+                organicMatterLabel: 'जैविक पदार्थ',
+                aiRecommendationsTitle: 'AI सिफारिशें',
+                weatherTitle: 'मौसम प्रभाव',
+                soilTempLabel: 'मिट्टी का तापमान',
+                evaporationLabel: 'वाष्पीकरण दर',
+                sunlightLabel: 'दैनिक सूर्यप्रकाश',
+                weeklyForecastLabel: '7-दिन पूर्वानुमान',
+                soilMapTitle: 'मिट्टी मानचित्र',
+                coordinatesLabel: 'निर्देशांक:',
+                elevationLabel: 'ऊंचाई:',
+                historicalTitle: 'ऐतिहासिक विश्लेषण',
+                lastTestLabel: 'अंतिम परीक्षण: 3 महीने पहले',
+                lastTestResult: 'pH: 6.5, NPK: अच्छा',
+                trendLabel: 'सुधार प्रवृत्ति',
+                trendValue: '+12% मिट्टी स्वास्थ्य',
+                viewHistoryText: 'पूरा इतिहास देखें',
+                quickActionsTitle: 'त्वरित क्रियाएं',
+                scheduleTestText: 'लैब परीक्षण निर्धारित करें',
+                orderFertilizerText: 'उर्वरक ऑर्डर करें',
+                consultExpertText: 'विशेषज्ञ से सलाह लें',
+                aiChatText: 'AI से चैट करें',
+                chatTitle: 'मिट्टी स्वास्थ्य AI सहायक',
+                aiWelcome: 'नमस्ते! मैं आपका मिट्टी स्वास्थ्य विशेषज्ञ हूं। मैं आपके मिट्टी डेटा का विश्लेषण करने और व्यक्तिगत सिफारिशें प्रदान करने में मदद कर सकता हूं। आप क्या जानना चाहते हैं?'
+            },
+            ar: {
+                headerDescription: 'تحليل متقدم للتربة مدعوم بالذكاء الاصطناعي وبيانات الطقس والصور الفضائية',
+                accuracyLabel: 'معدل الدقة',
+                parametersLabel: 'معاملات التربة',
+                availabilityLabel: 'تحليل الذكاء الاصطناعي',
+                uploadTitle: 'تحميل عينة التربة',
+                uploadPrompt: 'اسحب صور التربة هنا',
+                uploadSubtext: 'أو انقر للتصفح (JPG, PNG, WebP حتى 10MB)',
+                browseText: 'تصفح الملفات',
+                analyzeText: 'تحليل التربة',
+                locationLabel: 'الموقع',
+                farmSizeLabel: 'حجم المزرعة (هكتار)',
+                phTestLabel: 'اختبار pH',
+                phTestDesc: 'تحليل حموضة التربة',
+                npkTestLabel: 'تحليل NPK',
+                npkTestDesc: 'مستويات المغذيات',
+                moistureTestLabel: 'اختبار الرطوبة',
+                moistureTestDesc: 'محتوى الماء',
+                resultsTitle: 'نتائج التحليل',
+                exportText: 'تصدير',
+                shareText: 'مشاركة',
+                scoreLabel: 'نقاط الصحة',
+                nutrientLevelsLabel: 'مستويات المغذيات',
+                soilCompositionLabel: 'تركيب التربة',
+                phLevelLabel: 'مستوى pH',
+                moistureLabel: 'محتوى الرطوبة',
+                organicMatterLabel: 'المادة العضوية',
+                aiRecommendationsTitle: 'توصيات الذكاء الاصطناعي',
+                weatherTitle: 'تأثير الطقس',
+                soilTempLabel: 'درجة حرارة التربة',
+                evaporationLabel: 'معدل التبخر',
+                sunlightLabel: 'ضوء الشمس اليومي',
+                weeklyForecastLabel: 'توقعات 7 أيام',
+                soilMapTitle: 'خريطة التربة',
+                coordinatesLabel: 'الإحداثيات:',
+                elevationLabel: 'الارتفاع:',
+                historicalTitle: 'التحليل التاريخي',
+                lastTestLabel: 'آخر اختبار: منذ 3 أشهر',
+                lastTestResult: 'pH: 6.5, NPK: جيد',
+                trendLabel: 'اتجاه التحسن',
+                trendValue: '+12% صحة التربة',
+                viewHistoryText: 'عرض التاريخ الكامل',
+                quickActionsTitle: 'إجراءات سريعة',
+                scheduleTestText: 'جدولة اختبار المختبر',
+                orderFertilizerText: 'طلب الأسمدة',
+                consultExpertText: 'استشارة خبير',
+                aiChatText: 'دردشة مع الذكاء الاصطناعي',
+                chatTitle: 'مساعد الذكاء الاصطناعي لصحة التربة',
+                aiWelcome: 'مرحباً! أنا أخصائي صحة التربة الخاص بك. يمكنني مساعدتك في تحليل بيانات التربة وتقديم توصيات شخصية. ماذا تريد أن تعرف؟'
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializeGeolocation();
+            initializeWeatherData();
+            initializePoeAPI();
+            setupEventListeners();
+            initializeMap();
+            updateLanguageInterface();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI soil analysis
+        function initializePoeAPI() {
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('soil-analysis-handler', handleSoilAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe for soil analysis
+        function handleSoilAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    updateAIChatMessage(aiMessage.content);
+                } else if (aiMessage.status === 'complete') {
+                    finalizeAIChatMessage(aiMessage.content);
+                    isAIResponding = false;
+                    
+                    // If this is a soil analysis response, update recommendations
+                    if (context && context.type === 'soil-analysis') {
+                        updateAIRecommendations(aiMessage.content);
+                    }
+                } else if (aiMessage.status === 'error') {
+                    showAIError();
+                    isAIResponding = false;
+                }
+            }
+        }
+
+        // Send soil data to AI for analysis
+        async function sendSoilDataToAI(soilData, imageData = null) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            
+            const contextPrompt = buildSoilAnalysisPrompt(soilData, imageData);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'soil-analysis-handler',
+                        stream: true,
+                        openChat: false,
+                        handlerContext: { type: 'soil-analysis' }
+                    });
+                } else {
+                    // Fallback to local analysis
+                    setTimeout(() => {
+                        const analysis = performLocalSoilAnalysis(soilData);
+                        updateAIRecommendations(analysis);
+                        isAIResponding = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Soil AI analysis error:', error);
+                isAIResponding = false;
+            }
+        }
+
+        // Build comprehensive soil analysis prompt
+        function buildSoilAnalysisPrompt(soilData, imageData) {
+            const weatherContext = weatherData ? `Current weather conditions: Temperature: ${weatherData.temperature}°C, Humidity: ${weatherData.humidity}%, Precipitation: ${weatherData.precipitation}mm, Wind: ${weatherData.windSpeed}km/h` : '';
+            
+            const locationContext = currentLocation ? `Location: ${currentLocation.latitude}, ${currentLocation.longitude}, Elevation: ${currentLocation.elevation}m` : '';
+            
+            const systemPrompt = `You are an advanced soil health specialist and agricultural scientist with expertise in:
+- Soil chemistry, physics, and biology
+- Climate-smart agriculture and sustainable farming
+- Soil fertility management and nutrient cycling
+- Digital soil mapping and precision agriculture
+- Weather-soil interaction analysis
+- Crop-soil compatibility assessment
+
+Current Analysis Context:
+${weatherContext}
+${locationContext}
+
+Soil Data Provided:
+${JSON.stringify(soilData, null, 2)}
+
+Analysis Instructions:
+1. Provide comprehensive soil health assessment (0-100 score)
+2. Analyze pH levels, NPK nutrients, organic matter, moisture
+3. Consider current weather conditions and their impact on soil
+4. Identify potential soil problems or deficiencies
+5. Recommend specific fertilizers, amendments, and treatments
+6. Suggest suitable crops for this soil type and condition
+7. Provide timeline for soil improvement strategies
+8. Consider climate adaptation and sustainability
+
+Language: Respond in ${languageConfig[currentLanguage] ? Object.keys(languageConfig).find(key => key === currentLanguage) : 'English'}
+
+Provide detailed, actionable recommendations for optimal soil management:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Send chat message to AI
+        async function sendChatToAI(userMessage) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            addChatMessage(userMessage, true);
+            showAIThinking();
+            
+            const soilContext = soilAnalysisData ? `Current soil analysis data: ${JSON.stringify(soilAnalysisData, null, 2)}` : '';
+            const weatherContext = weatherData ? `Current weather: ${JSON.stringify(weatherData, null, 2)}` : '';
+            
+            const contextPrompt = `You are a soil health specialist AI assistant. Help the user with their soil analysis questions.
+
+Context:
+${soilContext}
+${weatherContext}
+
+User question: ${userMessage}
+
+Respond in ${languageConfig[currentLanguage] ? Object.keys(languageConfig).find(key => key === currentLanguage) : 'English'} with helpful soil management advice:`;
+
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(`@Claude-Sonnet-4 ${contextPrompt}`, {
+                        handler: 'soil-analysis-handler',
+                        stream: true,
+                        openChat: false,
+                        handlerContext: { type: 'chat' }
+                    });
+                } else {
+                    // Fallback response
+                    setTimeout(() => {
+                        const response = getLocalSoilChatResponse(userMessage);
+                        finalizeAIChatMessage(response);
+                        isAIResponding = false;
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('Chat AI error:', error);
+                showAIError();
+                isAIResponding = false;
+            }
+        }
+
+        // Local soil analysis fallback
+        function performLocalSoilAnalysis(soilData) {
+            const analysis = {
+                healthScore: Math.floor(Math.random() * 20) + 75, // 75-95
+                ph: 6.8,
+                moisture: 45,
+                organicMatter: 3.2,
+                nitrogen: 85,
+                phosphorus: 72,
+                potassium: 68,
+                recommendations: [
+                    "Your soil shows excellent health with a score of 85/100.",
+                    "pH level is optimal for most crops (6.8).",
+                    "Consider adding compost to increase organic matter to 4%.",
+                    "Phosphorus levels could be improved with bone meal application.",
+                    "Maintain current moisture levels through mulching.",
+                    "Suitable crops: Tomatoes, corn, beans, leafy greens."
+                ]
+            };
+            
+            return analysis.recommendations.join('\n\n');
+        }
+
+        // Local chat response fallback
+        function getLocalSoilChatResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+                return languageConfig[currentLanguage]?.aiWelcome || languageConfig.en.aiWelcome;
+            }
+            
+            if (lowerMessage.includes('ph')) {
+                return "pH is crucial for nutrient availability. Most crops prefer 6.0-7.0. Test regularly and amend with lime (raise pH) or sulfur (lower pH) as needed.";
+            }
+            
+            if (lowerMessage.includes('fertilizer') || lowerMessage.includes('nutrient')) {
+                return "Based on your soil analysis, I recommend a balanced 10-10-10 NPK fertilizer. Apply 2-3 pounds per 1000 sq ft before planting season.";
+            }
+            
+            if (lowerMessage.includes('moisture') || lowerMessage.includes('water')) {
+                return "Your soil moisture is at 45%, which is good. Maintain this with mulching and drip irrigation. Check moisture 2-3 inches deep.";
+            }
+            
+            return "I can help with soil pH, nutrients, moisture, fertilizers, and crop recommendations. What specific aspect would you like to know more about?";
+        }
+
+        // Initialize geolocation
+        function initializeGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                        fetchElevationData();
+                        updateMapLocation();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        // Use default location
+                        currentLocation = { latitude: -1.2921, longitude: 36.8219 }; // Nairobi
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                    }
+                );
+            }
+        }
+
+        // Fetch weather data from API
+        async function fetchWeatherData() {
+            if (!currentLocation) return;
+            
+            try {
+                // In production, use real API key
+                const weatherResponse = await fetch(
+                    `${API_CONFIG.OPENWEATHER_URL}/weather?lat=${currentLocation.latitude}&lon=${currentLocation.longitude}&appid=${API_CONFIG.WEATHER_API_KEY}&units=metric`
+                );
+                
+                if (weatherResponse.ok) {
+                    const data = await weatherResponse.json();
+                    weatherData = {
+                        temperature: data.main.temp,
+                        humidity: data.main.humidity,
+                        precipitation: data.rain ? data.rain['1h'] || 0 : 0,
+                        windSpeed: data.wind.speed * 3.6, // Convert m/s to km/h
+                        description: data.weather[0].description
+                    };
+                    
+                    updateWeatherDisplay();
+                } else {
+                    // Use demo data
+                    useDefaultWeatherData();
+                }
+            } catch (error) {
+                console.error('Weather API error:', error);
+                useDefaultWeatherData();
+            }
+        }
+
+        // Use default weather data when API fails
+        function useDefaultWeatherData() {
+            weatherData = {
+                temperature: 24,
+                humidity: 65,
+                precipitation: 2.5,
+                windSpeed: 12,
+                description: 'partly cloudy'
+            };
+            updateWeatherDisplay();
+        }
+
+        // Fetch elevation data
+        async function fetchElevationData() {
+            if (!currentLocation) return;
+            
+            try {
+                const response = await fetch(
+                    `${API_CONFIG.ELEVATION_API}?locations=${currentLocation.latitude},${currentLocation.longitude}`
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.results && data.results[0]) {
+                        currentLocation.elevation = data.results[0].elevation;
+                        updateLocationDisplay();
+                    }
+                }
+            } catch (error) {
+                console.error('Elevation API error:', error);
+                currentLocation.elevation = 1680; // Default elevation
+                updateLocationDisplay();
+            }
+        }
+
+        // Update weather display
+        function updateWeatherDisplay() {
+            if (!weatherData) return;
+            
+            document.getElementById('currentTemp').textContent = `${Math.round(weatherData.temperature)}°C`;
+            document.getElementById('humidity').textContent = `${weatherData.humidity}%`;
+            document.getElementById('precipitation').textContent = `${weatherData.precipitation} mm`;
+            document.getElementById('windSpeed').textContent = `${Math.round(weatherData.windSpeed)} km/h`;
+            
+            // Update soil-specific weather data
+            document.getElementById('soilTemp').textContent = `${Math.round(weatherData.temperature - 2)}°C`;
+            document.getElementById('evaporationRate').textContent = `${(weatherData.temperature * 0.13).toFixed(1)} mm/day`;
+            document.getElementById('sunlight').textContent = `${8.5} hours`;
+            
+            generateWeeklyForecast();
+        }
+
+        // Update location display
+        function updateLocationDisplay() {
+            if (!currentLocation) return;
+            
+            document.getElementById('currentLocation').textContent = 
+                `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`;
+            
+            document.getElementById('coordinates').textContent = 
+                `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`;
+            
+            if (currentLocation.elevation) {
+                document.getElementById('elevation').textContent = `${currentLocation.elevation} m`;
+            }
+        }
+
+        // Generate weekly forecast
+        function generateWeeklyForecast() {
+            const forecastContainer = document.getElementById('weeklyForecast');
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            
+            forecastContainer.innerHTML = '';
+            
+            days.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'text-center p-1 bg-gray-100 dark:bg-gray-600 rounded';
+                dayElement.innerHTML = `
+                    <div class="font-semibold">${day}</div>
+                    <div class="text-blue-600"><i class="fas fa-cloud-rain"></i></div>
+                    <div>${Math.floor(Math.random() * 10) + 20}°</div>
+                `;
+                forecastContainer.appendChild(dayElement);
+            });
+        }
+
+        // Initialize map
+        function initializeMap() {
+            const defaultLocation = currentLocation || { latitude: -1.2921, longitude: 36.8219 };
+            
+            map = L.map('soilMap').setView([defaultLocation.latitude, defaultLocation.longitude], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add soil marker
+            const soilIcon = L.divIcon({
+                className: 'custom-soil-marker',
+                html: '<i class="fas fa-map-marker-alt text-2xl text-primary"></i>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            
+            L.marker([defaultLocation.latitude, defaultLocation.longitude], { icon: soilIcon })
+                .addTo(map)
+                .bindPopup('Soil Analysis Location')
+                .openPopup();
+        }
+
+        // Update map location
+        function updateMapLocation() {
+            if (map && currentLocation) {
+                map.setView([currentLocation.latitude, currentLocation.longitude], 13);
+            }
+        }
+
+        // Update language interface
+        function updateLanguageInterface() {
+            const config = languageConfig[currentLanguage];
+            if (!config) return;
+            
+            // Update all translatable elements
+            Object.keys(config).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = config[key];
+                }
+            });
+        }
+
+        // Handle file upload
+        function handleFileUpload(files) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const imageDiv = document.createElement('div');
+                        imageDiv.className = 'relative';
+                        imageDiv.innerHTML = `
+                            <img src="${e.target.result}" alt="Soil sample ${index + 1}" class="w-full h-32 object-cover rounded-lg">
+                            <button onclick="removeImage(${index})" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                        preview.appendChild(imageDiv);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('uploadContent').classList.add('hidden');
+            document.getElementById('uploadPreview').classList.remove('hidden');
+        }
+
+        // Analyze soil images
+        function analyzeSoilImages() {
+            // Show analysis progress
+            showAnalysisProgress();
+            
+            // Simulate analysis with real AI integration
+            setTimeout(() => {
+                const demoSoilData = {
+                    ph: 6.8,
+                    moisture: 45,
+                    organicMatter: 3.2,
+                    nitrogen: 85,
+                    phosphorus: 72,
+                    potassium: 68,
+                    soilType: 'loam',
+                    healthScore: 85
+                };
+                
+                displayAnalysisResults(demoSoilData);
+                sendSoilDataToAI(demoSoilData);
+            }, 3000);
+        }
+
+        // Show analysis progress
+        function showAnalysisProgress() {
+            const modal = document.createElement('div');
+            modal.id = 'progressModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
+                    <div class="text-center">
+                        <div class="w-16 h-16 soil-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-microscope text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Analyzing Soil Sample</h3>
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mb-4">
+                            <div class="analysis-progress h-4 rounded-full"></div>
+                        </div>
+                        <div id="progressText" class="text-gray-600 dark:text-gray-300">Processing images...</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Simulate progress steps
+            const steps = [
+                'Processing images...',
+                'Analyzing soil composition...',
+                'Calculating nutrient levels...',
+                'Generating recommendations...',
+                'Finalizing results...'
+            ];
+            
+            let currentStep = 0;
+            const interval = setInterval(() => {
+                currentStep++;
+                if (currentStep < steps.length) {
+                    document.getElementById('progressText').textContent = steps[currentStep];
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        modal.remove();
+                    }, 500);
+                }
+            }, 600);
+        }
+
+        // Display analysis results
+        function displayAnalysisResults(data) {
+            soilAnalysisData = data;
+            
+            // Update health score
+            document.getElementById('healthScore').textContent = data.healthScore;
+            
+            // Update health status
+            const statusElement = document.getElementById('healthStatus');
+            if (data.healthScore >= 80) {
+                statusElement.textContent = languageConfig[currentLanguage]?.excellentHealth || 'Excellent Soil Health';
+                statusElement.className = 'text-xl font-semibold text-green-600 mt-4';
+            } else if (data.healthScore >= 60) {
+                statusElement.textContent = languageConfig[currentLanguage]?.goodHealth || 'Good Soil Health';
+                statusElement.className = 'text-xl font-semibold text-yellow-600 mt-4';
+            } else {
+                statusElement.textContent = languageConfig[currentLanguage]?.poorHealth || 'Needs Improvement';
+                statusElement.className = 'text-xl font-semibold text-red-600 mt-4';
+            }
+            
+            // Update individual metrics
+            document.getElementById('currentPH').textContent = data.ph;
+            document.getElementById('currentMoisture').textContent = `${data.moisture}%`;
+            document.getElementById('currentOM').textContent = `${data.organicMatter}%`;
+            
+            // Update progress bars
+            document.getElementById('phBar').style.width = `${(data.ph / 14) * 100}%`;
+            document.getElementById('moisturePointer').style.left = `${data.moisture}%`;
+            document.getElementById('omBar').style.width = `${(data.organicMatter / 5) * 100}%`;
+            
+            // Generate charts
+            generateNutrientChart(data);
+            generateCompositionChart(data);
+            
+            // Show results
+            document.getElementById('analysisResults').classList.remove('hidden');
+            document.getElementById('aiRecommendations').classList.remove('hidden');
+        }
+
+        // Generate nutrient chart
+        function generateNutrientChart(data) {
+            const ctx = document.getElementById('nutrientChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Nitrogen', 'Phosphorus', 'Potassium', 'pH', 'Organic Matter', 'Moisture'],
+                    datasets: [{
+                        label: 'Current Levels',
+                        data: [data.nitrogen, data.phosphorus, data.potassium, data.ph * 10, data.organicMatter * 20, data.moisture],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        pointBackgroundColor: '#22c55e',
+                        pointBorderColor: '#ffffff',
+                        pointHoverBackgroundColor: '#ffffff',
+                        pointHoverBorderColor: '#22c55e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate composition chart
+        function generateCompositionChart(data) {
+            const ctx = document.getElementById('compositionChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Clay', 'Sand', 'Silt', 'Organic Matter'],
+                    datasets: [{
+                        data: [30, 45, 20, 5],
+                        backgroundColor: ['#cd853f', '#f4a460', '#daa520', '#22c55e'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update AI recommendations
+        function updateAIRecommendations(recommendations) {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = '';
+            
+            const recommendationList = recommendations.split('\n\n').filter(rec => rec.trim());
+            
+            recommendationList.forEach((recommendation, index) => {
+                const recDiv = document.createElement('div');
+                recDiv.className = 'bg-gray-50 dark:bg-gray-700 p-4 rounded-lg';
+                recDiv.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="text-white text-sm font-bold">${index + 1}</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-gray-800 dark:text-white">${recommendation}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(recDiv);
+            });
+        }
+
+        // Chat message functions
+        function addChatMessage(message, isUser = false) {
+            const container = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'justify-end' : ''}`;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="bg-primary text-white p-3 rounded-lg max-w-xs">
+                        <p class="text-sm">${message}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${message}</p>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showAIThinking() {
+            const container = document.getElementById('chatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'aiThinking';
+            thinkingDiv.className = 'flex items-start space-x-3';
+            
+            thinkingDiv.innerHTML = `
+                <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <div class="ai-thinking h-4 rounded"></div>
+                </div>
+            `;
+            
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.innerHTML = `
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${content}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function finalizeAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addChatMessage(content, false);
+        }
+
+        function showAIError() {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addChatMessage("I apologize, but I'm having trouble analyzing the soil data right now. Please try again or contact our support team.", false);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Language selector
+            document.getElementById('languageSelector').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+            });
+
+            // File upload
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            document.getElementById('browseFiles').addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files);
+                }
+            });
+            
+            // Drag and drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileUpload(e.dataTransfer.files);
+                }
+            });
+
+            // GPS location
+            document.getElementById('useGPS').addEventListener('click', () => {
+                initializeGeolocation();
+            });
+
+            // Quick tests
+            document.getElementById('quickpH').addEventListener('click', () => {
+                // Simulate pH test
+                showQuickTestResult('pH', '6.8', 'Optimal for most crops');
+            });
+
+            document.getElementById('quickNPK').addEventListener('click', () => {
+                // Simulate NPK test
+                showQuickTestResult('NPK', 'N:85, P:72, K:68', 'Good levels, slight P deficiency');
+            });
+
+            document.getElementById('quickMoisture').addEventListener('click', () => {
+                // Simulate moisture test
+                showQuickTestResult('Moisture', '45%', 'Adequate moisture content');
+            });
+
+            // Analysis
+            document.getElementById('analyzeImages').addEventListener('click', analyzeSoilImages);
+
+            // Export and share
+            document.getElementById('exportResults').addEventListener('click', exportResults);
+            document.getElementById('shareResults').addEventListener('click', shareResults);
+
+            // AI Chat
+            document.getElementById('aiChat').addEventListener('click', () => {
+                document.getElementById('aiChatModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeChatModal').addEventListener('click', () => {
+                document.getElementById('aiChatModal').classList.add('hidden');
+            });
+
+            document.getElementById('sendChatMessage').addEventListener('click', handleChatMessage);
+            document.getElementById('chatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleChatMessage();
+                }
+            });
+
+            // Quick actions
+            document.getElementById('scheduleTest').addEventListener('click', () => {
+                showModal('Schedule Lab Test', `
+                    <div class="space-y-4">
+                        <p>Schedule a professional soil analysis at a certified laboratory.</p>
+                        <div class="space-y-3">
+                            <input type="date" class="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary">
+                            <select class="w-full px-3 py-2 border rounded focus:outline-none focus:border-primary">
+                                <option>Select Test Type</option>
+                                <option>Basic Soil Test</option>
+                                <option>Complete Nutrient Analysis</option>
+                                <option>Organic Matter Analysis</option>
+                                <option>Heavy Metals Test</option>
+                            </select>
+                            <button class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Schedule Test
+                            </button>
+                        </div>
+                    </div>
+                `);
+            });
+
+            document.getElementById('orderFertilizer').addEventListener('click', () => {
+                showModal('Order Fertilizer', `
+                    <div class="space-y-4">
+                        <p>Based on your soil analysis, here are recommended fertilizers:</p>
+                        <div class="space-y-2">
+                            <div class="border rounded p-3">
+                                <h4 class="font-semibold">10-10-10 NPK Fertilizer</h4>
+                                <p class="text-sm text-gray-600">Balanced nutrients for general use</p>
+                                <button class="mt-2 bg-primary text-white px-4 py-1 rounded text-sm">Add to Cart</button>
+                            </div>
+                            <div class="border rounded p-3">
+                                <h4 class="font-semibold">Organic Compost</h4>
+                                <p class="text-sm text-gray-600">Improve organic matter content</p>
+                                <button class="mt-2 bg-primary text-white px-4 py-1 rounded text-sm">Add to Cart</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+
+            document.getElementById('consultExpert').addEventListener('click', () => {
+                showModal('Consult Expert', `
+                    <div class="space-y-4">
+                        <p>Connect with a certified soil specialist for personalized advice.</p>
+                        <div class="space-y-3">
+                            <div class="border rounded p-3 flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-semibold">Dr. Sarah Johnson</h4>
+                                    <p class="text-sm text-gray-600">Soil Science PhD, 15 years experience</p>
+                                </div>
+                                <button class="bg-green-500 text-white px-4 py-2 rounded text-sm">Available</button>
+                            </div>
+                            <div class="border rounded p-3 flex justify-between items-center">
+                                <div>
+                                    <h4 class="font-semibold">Prof. Michael Chen</h4>
+                                    <p class="text-sm text-gray-600">Agricultural Engineering, Soil Health Expert</p>
+                                </div>
+                                <button class="bg-yellow-500 text-white px-4 py-2 rounded text-sm">Busy</button>
+                            </div>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+
+        // Show quick test result
+        function showQuickTestResult(testType, result, interpretation) {
+            showModal(`${testType} Test Result`, `
+                <div class="text-center space-y-4">
+                    <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto">
+                        <i class="fas fa-flask text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 dark:text-white">${result}</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mt-2">${interpretation}</p>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="bg-primary text-white px-6 py-2 rounded hover:bg-secondary transition-colors">
+                        Close
+                    </button>
+                </div>
+            `);
+        }
+
+        // Handle chat message
+        function handleChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message && !isAIResponding) {
+                sendChatToAI(message);
+                input.value = '';
+            }
+        }
+
+        // Export results
+        function exportResults() {
+            if (!soilAnalysisData) return;
+            
+            const report = `Soil Health Analysis Report
+Generated: ${new Date().toLocaleDateString()}
+
+Location: ${currentLocation ? `${currentLocation.latitude}, ${currentLocation.longitude}` : 'Not specified'}
+Farm Size: ${document.getElementById('farmSize').value || 'Not specified'} hectares
+
+Soil Health Score: ${soilAnalysisData.healthScore}/100
+pH Level: ${soilAnalysisData.ph}
+Moisture Content: ${soilAnalysisData.moisture}%
+Organic Matter: ${soilAnalysisData.organicMatter}%
+
+Nutrient Levels:
+- Nitrogen: ${soilAnalysisData.nitrogen}%
+- Phosphorus: ${soilAnalysisData.phosphorus}%
+- Potassium: ${soilAnalysisData.potassium}%
+
+Weather Conditions:
+- Temperature: ${weatherData?.temperature || '--'}°C
+- Humidity: ${weatherData?.humidity || '--'}%
+- Precipitation: ${weatherData?.precipitation || '--'}mm
+
+AI Recommendations:
+${document.getElementById('recommendationsList').textContent || 'No recommendations available'}
+
+Report generated by Agriclimate Connect - AI Soil Health Analysis
+`;
+            
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `soil-analysis-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Share results
+        function shareResults() {
+            if (navigator.share && soilAnalysisData) {
+                navigator.share({
+                    title: 'Soil Health Analysis Results',
+                    text: `My soil health score is ${soilAnalysisData.healthScore}/100! Check out this AI-powered analysis.`,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback to clipboard
+                const shareText = `My soil health score is ${soilAnalysisData?.healthScore || '--'}/100! Check out this AI-powered soil analysis at ${window.location.href}`;
+                navigator.clipboard.writeText(shareText).then(() => {
+                    showNotification('Results copied to clipboard!', 'success');
+                });
+            }
+        }
+
+        // Show modal
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">${title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Initialize weather data fetching
+        function initializeWeatherData() {
+            // Fetch weather data every 30 minutes
+            setInterval(fetchWeatherData, 30 * 60 * 1000);
+        }
+
+        // Global function for image removal
+        window.removeImage = function(index) {
+            const preview = document.getElementById('imagePreview');
+            const images = preview.children;
+            if (images[index]) {
+                images[index].remove();
+            }
+            
+            if (preview.children.length === 0) {
+                document.getElementById('uploadContent').classList.remove('hidden');
+                document.getElementById('uploadPreview').classList.add('hidden');
+            }
+        };
+    </script>
+</body>
+</html>

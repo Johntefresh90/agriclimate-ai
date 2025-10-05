@@ -1,0 +1,2738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Pest Detection - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        pest: '#dc2626',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        safe: '#10b981'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .pest-gradient {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+        }
+        .detection-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .detection-card:hover {
+            transform: translateY(-5px);
+            border-color: #dc2626;
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .upload-zone:hover {
+            border-color: #dc2626;
+            background-color: rgba(220, 38, 38, 0.05);
+        }
+        .upload-zone.dragover {
+            border-color: #dc2626;
+            background-color: rgba(220, 38, 38, 0.1);
+        }
+        .pest-risk-meter {
+            background: conic-gradient(
+                #10b981 0deg 72deg,
+                #f59e0b 72deg 144deg,
+                #ef4444 144deg 216deg,
+                #dc2626 216deg 288deg,
+                #991b1b 288deg 360deg
+            );
+        }
+        .scanning-animation {
+            background: linear-gradient(90deg, transparent, #dc2626, transparent);
+            animation: scan 2s linear infinite;
+        }
+        @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .pest-alert {
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+            border-left: 4px solid #dc2626;
+            animation: pulse 2s infinite;
+        }
+        .safe-alert {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            border-left: 4px solid #10b981;
+        }
+        .warning-alert {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-left: 4px solid #f59e0b;
+        }
+        .ai-thinking {
+            background: linear-gradient(90deg, #e5e7eb, #f3f4f6, #e5e7eb);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .map-container {
+            height: 300px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .pest-identification {
+            position: relative;
+            overflow: hidden;
+        }
+        .pest-identification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #dc2626, transparent);
+            animation: scan-line 3s ease-in-out infinite;
+        }
+        @keyframes scan-line {
+            0%, 100% { transform: translateX(-100%); opacity: 0; }
+            50% { transform: translateX(0); opacity: 1; }
+        }
+        .pest-category {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            border-radius: 12px;
+            padding: 16px;
+            border: 2px solid #d1d5db;
+            transition: all 0.3s ease;
+        }
+        .pest-category.active {
+            border-color: #dc2626;
+            background: linear-gradient(135deg, #fee2e2, #fecaca);
+        }
+        .treatment-option {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border-left: 4px solid #10b981;
+            transition: all 0.3s ease;
+        }
+        .treatment-option:hover {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            transform: translateX(5px);
+        }
+        .severity-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .severity-low { background-color: #10b981; }
+        .severity-medium { background-color: #f59e0b; }
+        .severity-high { background-color: #ef4444; }
+        .severity-critical { background-color: #dc2626; animation: pulse 1s infinite; }
+        .weather-impact {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+        }
+        .seasonal-calendar {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
+        .pest-hotspot {
+            background: radial-gradient(circle, rgba(220, 38, 38, 0.3), transparent);
+            border-radius: 50%;
+            animation: hotspot-pulse 3s ease-in-out infinite;
+        }
+        @keyframes hotspot-pulse {
+            0%, 100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 0.3; }
+        }
+        .confidence-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #ef4444, #f59e0b, #10b981);
+            position: relative;
+            overflow: hidden;
+        }
+        .confidence-indicator {
+            position: absolute;
+            top: -2px;
+            width: 12px;
+            height: 12px;
+            background: white;
+            border: 2px solid #374151;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="ai-assistant.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">AI Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-primary font-semibold hover:text-secondary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="soil-analysis.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Soil Health Analysis</a>
+                            <a href="water-management.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Water Management</a>
+                            <a href="#" class="block px-4 py-2 text-primary font-semibold hover:bg-primary hover:text-white">Pest Detection</a>
+                            <a href="#yield-prediction" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Yield Prediction</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <select id="languageSelector" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm pr-8 appearance-none">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇧🇷 Português</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="sw">🇰🇪 Kiswahili</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-2 top-2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Market Hub</a>
+                            <a href="ai-assistant.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">AI Assistant</a>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-primary font-semibold hover:text-secondary transition-colors mobile-dropdown-toggle">
+                            Services <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="soil-analysis.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Soil Health Analysis</a>
+                            <a href="water-management.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Water Management</a>
+                            <a href="#" class="block text-primary font-semibold">Pest Detection</a>
+                            <a href="#yield-prediction" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Yield Prediction</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="pest-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-bug mr-3"></i><span id="headerTitle">AI Pest Detection & Management</span>
+                </h1>
+                <p class="text-xl opacity-90 mb-6" id="headerDescription">Advanced pest identification, real-time monitoring, and intelligent treatment recommendations</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">95%</div>
+                        <div class="text-sm opacity-75" id="accuracyLabel">Detection Accuracy</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">500+</div>
+                        <div class="text-sm opacity-75" id="speciesLabel">Pest Species</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75" id="monitoringLabel">AI Monitoring</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pest Alert Strip -->
+    <section class="bg-red-600 text-white py-3">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center text-sm">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-exclamation-triangle animate-pulse"></i>
+                    <span id="alertMessage">Current Alert: High aphid activity in your region</span>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center space-x-2">
+                        <span class="severity-indicator severity-high"></span>
+                        <span id="riskLevel">High Risk</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-thermometer-half"></i>
+                        <span id="currentTemp">26°C</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-tint"></i>
+                        <span id="humidity">78%</span>
+                    </div>
+                    <button id="viewAlert" class="bg-red-700 px-3 py-1 rounded text-xs hover:bg-red-800 transition-colors">
+                        <span id="viewAlertText">View Details</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Detection Interface -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Main Detection Panel -->
+                <div class="lg:col-span-3 space-y-6">
+                    <!-- Pest Detection Upload -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-camera text-pest mr-2"></i><span id="uploadTitle">Pest Identification Scanner</span>
+                        </h2>
+                        
+                        <div id="uploadZone" class="upload-zone rounded-xl p-8 text-center mb-6 pest-identification">
+                            <div id="uploadContent">
+                                <i class="fas fa-camera-retro text-6xl text-gray-400 mb-4"></i>
+                                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2" id="uploadPrompt">Upload pest images for instant identification</h3>
+                                <p class="text-gray-500 dark:text-gray-400 mb-4" id="uploadSubtext">Drag & drop or click to browse (JPG, PNG up to 10MB)</p>
+                                <button id="browseFiles" class="bg-pest text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                                    <i class="fas fa-folder-open mr-2"></i><span id="browseText">Browse Images</span>
+                                </button>
+                                <input type="file" id="fileInput" accept="image/*" multiple class="hidden">
+                            </div>
+                            <div id="uploadPreview" class="hidden">
+                                <div id="imagePreview" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4"></div>
+                                <button id="analyzePest" class="bg-pest text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors">
+                                    <i class="fas fa-search mr-2"></i><span id="analyzeText">Identify Pest</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Detection Categories -->
+                        <div class="grid md:grid-cols-4 gap-4">
+                            <button class="pest-category" data-category="insects">
+                                <i class="fas fa-bug text-2xl text-pest mb-2"></i>
+                                <h3 class="font-semibold text-gray-800 dark:text-white" id="insectsLabel">Insects</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300" id="insectsDesc">Aphids, beetles, moths</p>
+                            </button>
+                            <button class="pest-category" data-category="diseases">
+                                <i class="fas fa-virus text-2xl text-orange-600 mb-2"></i>
+                                <h3 class="font-semibold text-gray-800 dark:text-white" id="diseasesLabel">Diseases</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300" id="diseasesDesc">Fungal, bacterial, viral</p>
+                            </button>
+                            <button class="pest-category" data-category="weeds">
+                                <i class="fas fa-seedling text-2xl text-green-600 mb-2"></i>
+                                <h3 class="font-semibold text-gray-800 dark:text-white" id="weedsLabel">Weeds</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300" id="weedsDesc">Invasive plants</p>
+                            </button>
+                            <button class="pest-category" data-category="wildlife">
+                                <i class="fas fa-paw text-2xl text-blue-600 mb-2"></i>
+                                <h3 class="font-semibold text-gray-800 dark:text-white" id="wildlifeLabel">Wildlife</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-300" id="wildlifeDesc">Rodents, birds</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Detection Results -->
+                    <div id="detectionResults" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 hidden">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+                                <i class="fas fa-microscope text-pest mr-2"></i><span id="resultsTitle">Detection Results</span>
+                            </h2>
+                            <div class="flex space-x-2">
+                                <button id="shareResults" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                                    <i class="fas fa-share mr-2"></i><span id="shareText">Share</span>
+                                </button>
+                                <button id="saveReport" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors">
+                                    <i class="fas fa-download mr-2"></i><span id="saveText">Save Report</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Identified Pest Info -->
+                        <div class="grid md:grid-cols-2 gap-6 mb-6">
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4" id="identifiedPestTitle">Identified Pest</h3>
+                                <div class="flex items-center space-x-4 mb-4">
+                                    <div id="pestImage" class="w-20 h-20 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-bug text-2xl text-gray-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 id="pestName" class="text-xl font-bold text-gray-800 dark:text-white">Aphid (Aphis gossypii)</h4>
+                                        <p id="pestCategory" class="text-gray-600 dark:text-gray-300">Sucking Insect</p>
+                                        <div class="flex items-center mt-2">
+                                            <span class="text-sm text-gray-600 dark:text-gray-300 mr-2" id="confidenceLabel">Confidence:</span>
+                                            <div class="confidence-bar w-24">
+                                                <div id="confidenceIndicator" class="confidence-indicator" style="left: 92%"></div>
+                                            </div>
+                                            <span id="confidenceValue" class="text-sm font-semibold text-gray-800 dark:text-white ml-2">92%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300" id="severityLabel">Severity:</span>
+                                        <span class="severity-indicator severity-high"></span>
+                                        <span id="severityValue" class="text-sm font-semibold text-red-600">High</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300" id="riskFactorLabel">Risk Factor:</span>
+                                        <span id="riskFactorValue" class="text-sm font-semibold text-orange-600">8.2/10</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-sm text-gray-600 dark:text-gray-300" id="spreadRateLabel">Spread Rate:</span>
+                                        <span id="spreadRateValue" class="text-sm font-semibold text-red-600">Rapid</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4" id="impactAnalysisTitle">Impact Analysis</h3>
+                                <canvas id="impactChart" class="w-full h-48"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- AI Recommendations -->
+                        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6">
+                            <h3 class="text-lg font-bold text-blue-800 dark:text-blue-300 mb-4">
+                                <i class="fas fa-robot mr-2"></i><span id="aiRecommendationsTitle">AI Treatment Recommendations</span>
+                            </h3>
+                            <div id="recommendationsList" class="space-y-3">
+                                <!-- AI recommendations will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Treatment Plans -->
+                    <div id="treatmentPlans" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 hidden">
+                        <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+                            <i class="fas fa-prescription-bottle text-pest mr-2"></i><span id="treatmentTitle">Treatment Plans</span>
+                        </h2>
+                        
+                        <div class="grid md:grid-cols-3 gap-6">
+                            <div class="treatment-option p-4 rounded-lg">
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="organicTreatment">Organic Treatment</h4>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                                    <li>• Neem oil spray (2%)</li>
+                                    <li>• Beneficial insects release</li>
+                                    <li>• Soap solution application</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-green-600 font-semibold" id="organicCost">Cost: $15-25/hectare</div>
+                            </div>
+
+                            <div class="treatment-option p-4 rounded-lg">
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="chemicalTreatment">Chemical Treatment</h4>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                                    <li>• Imidacloprid 17.8% SL</li>
+                                    <li>• Thiamethoxam 25% WG</li>
+                                    <li>• Deltamethrin 2.8% EC</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-green-600 font-semibold" id="chemicalCost">Cost: $35-50/hectare</div>
+                            </div>
+
+                            <div class="treatment-option p-4 rounded-lg">
+                                <h4 class="font-semibold text-gray-800 dark:text-white mb-2" id="integratedTreatment">Integrated Treatment</h4>
+                                <ul class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                                    <li>• Biological + Chemical</li>
+                                    <li>• Cultural practices</li>
+                                    <li>• Monitoring & prevention</li>
+                                </ul>
+                                <div class="mt-3 text-xs text-green-600 font-semibold" id="integratedCost">Cost: $25-40/hectare</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pest Analytics Dashboard -->
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <!-- Regional Pest Activity -->
+                        <div class="seasonal-calendar rounded-2xl shadow-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                                <i class="fas fa-chart-line text-pest mr-2"></i><span id="regionalActivityTitle">Regional Pest Activity</span>
+                            </h3>
+                            <canvas id="pestActivityChart" class="w-full h-64"></canvas>
+                        </div>
+
+                        <!-- Weather Impact -->
+                        <div class="weather-impact rounded-2xl shadow-xl p-6">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                                <i class="fas fa-cloud text-pest mr-2"></i><span id="weatherImpactTitle">Weather Impact on Pests</span>
+                            </h3>
+                            <canvas id="weatherImpactChart" class="w-full h-64"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Pest Risk Assessment -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-exclamation-triangle text-pest mr-2"></i><span id="riskAssessmentTitle">Current Risk Level</span>
+                        </h3>
+                        
+                        <div class="text-center mb-4">
+                            <div class="w-24 h-24 pest-risk-meter rounded-full flex items-center justify-center mx-auto mb-3">
+                                <div class="w-20 h-20 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center">
+                                    <div class="text-center">
+                                        <div id="riskScore" class="text-xl font-bold text-gray-800 dark:text-white">7.8</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400" id="riskScoreLabel">Risk Score</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <h4 id="currentRiskLevel" class="text-lg font-semibold text-red-600">High Risk</h4>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="temperatureRisk">Temperature Risk</span>
+                                <span class="severity-indicator severity-high"></span>
+                                <span class="text-sm font-semibold text-red-600">High</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="humidityRisk">Humidity Risk</span>
+                                <span class="severity-indicator severity-medium"></span>
+                                <span class="text-sm font-semibold text-orange-600">Medium</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600 dark:text-gray-300" id="seasonalRisk">Seasonal Risk</span>
+                                <span class="severity-indicator severity-high"></span>
+                                <span class="text-sm font-semibold text-red-600">High</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Alerts -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-bell text-pest mr-2"></i><span id="activeAlertsTitle">Active Alerts</span>
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <div class="pest-alert p-3 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="font-semibold text-red-800" id="aphidAlert">Aphid Outbreak</div>
+                                        <div class="text-sm text-red-600" id="aphidLocation">Your Region - 2km radius</div>
+                                    </div>
+                                    <div class="severity-indicator severity-critical"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="warning-alert p-3 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="font-semibold text-orange-800" id="thripsAlert">Thrips Activity</div>
+                                        <div class="text-sm text-orange-600" id="thripsLocation">Northern Fields - 5km</div>
+                                    </div>
+                                    <div class="severity-indicator severity-medium"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="safe-alert p-3 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="font-semibold text-green-800" id="beneficialAlert">Beneficial Insects</div>
+                                        <div class="text-sm text-green-600" id="beneficialLocation">Good population levels</div>
+                                    </div>
+                                    <div class="severity-indicator severity-low"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pest Forecast -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-calendar-alt text-pest mr-2"></i><span id="pestForecastTitle">7-Day Pest Forecast</span>
+                        </h3>
+                        
+                        <div id="pestForecast" class="space-y-3">
+                            <!-- Forecast will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Pest Map -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-map text-pest mr-2"></i><span id="pestMapTitle">Regional Pest Map</span>
+                        </h3>
+                        <div id="pestMap" class="map-container"></div>
+                        <div class="mt-4 text-sm">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-gray-600 dark:text-gray-300" id="infestationRate">Infestation Rate:</span>
+                                <span class="font-semibold text-red-600">15.2%</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600 dark:text-gray-300" id="treatmentCoverage">Treatment Coverage:</span>
+                                <span class="font-semibold text-green-600">68%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-bolt text-pest mr-2"></i><span id="quickActionsTitle">Quick Actions</span>
+                        </h3>
+                        
+                        <div class="space-y-3">
+                            <button id="pestAI" class="w-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 p-3 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-left">
+                                <i class="fas fa-robot mr-2"></i><span id="pestAIText">Pest AI Assistant</span>
+                            </button>
+                            <button id="reportPest" class="w-full bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 p-3 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors text-left">
+                                <i class="fas fa-flag mr-2"></i><span id="reportPestText">Report Pest Activity</span>
+                            </button>
+                            <button id="treatmentCalculator" class="w-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 p-3 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-left">
+                                <i class="fas fa-calculator mr-2"></i><span id="calculatorText">Treatment Calculator</span>
+                            </button>
+                            <button id="expertConsult" class="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 p-3 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-left">
+                                <i class="fas fa-user-md mr-2"></i><span id="consultText">Expert Consultation</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pest AI Assistant Modal -->
+    <div id="pestAIModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[80vh] mx-4 flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-robot text-pest mr-2"></i><span id="aiChatTitle">Pest Management AI</span>
+                </h2>
+                <button id="closeAIModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="aiChatMessages" class="flex-1 overflow-y-auto p-6 space-y-4">
+                <div class="flex items-start space-x-3">
+                    <div class="w-8 h-8 bg-pest rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p id="aiWelcomeMessage" class="text-gray-800 dark:text-white text-sm">Hello! I'm your pest management specialist. I can help identify pests, recommend treatments, and provide prevention strategies based on your location and crops. What pest issue would you like to discuss?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="flex space-x-2">
+                    <input type="text" id="aiChatInput" placeholder="Describe your pest problem..." 
+                           class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white text-base">
+                    <button id="sendAIMessage" class="bg-pest text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Pest Modal -->
+    <div id="reportPestModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full mx-4">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white" id="reportPestTitle">Report Pest Activity</h2>
+                <button id="closeReportModal" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="pestTypeLabel">Pest Type</label>
+                    <select id="pestType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                        <option value="">Select pest type</option>
+                        <option value="aphids">Aphids</option>
+                        <option value="thrips">Thrips</option>
+                        <option value="whiteflies">Whiteflies</option>
+                        <option value="beetles">Beetles</option>
+                        <option value="caterpillars">Caterpillars</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="severityLevelLabel">Severity Level</label>
+                    <select id="severityLevel" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                        <option value="low">Low - Few insects observed</option>
+                        <option value="medium">Medium - Noticeable damage</option>
+                        <option value="high">High - Significant infestation</option>
+                        <option value="critical">Critical - Severe damage</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="cropAffectedLabel">Crop Affected</label>
+                    <input type="text" id="cropAffected" placeholder="e.g., Tomatoes, Corn, etc." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2" id="descriptionLabel">Description</label>
+                    <textarea id="pestDescription" rows="3" placeholder="Describe the pest damage and symptoms..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white"></textarea>
+                </div>
+                <button id="submitReport" class="w-full bg-pest text-white py-2 rounded hover:bg-red-700 transition-colors">
+                    <span id="submitReportText">Submit Report</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered climate-smart solutions and intelligent pest management for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">API Documentation</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Support Center</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-TECH</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Cookie Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Data Protection</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let currentLanguage = 'en';
+        let currentLocation = null;
+        let weatherData = null;
+        let pestData = null;
+        let map = null;
+        let isAIResponding = false;
+        let detectedPest = null;
+
+        // API Configuration for real-time pest detection
+        const API_CONFIG = {
+            WEATHER_API_KEY: 'your-weather-api-key', // Replace with actual API key
+            OPENWEATHER_URL: 'https://api.openweathermap.org/data/2.5',
+            PEST_DETECTION_API: 'https://api.plantnet.org/v2/identify',
+            ENTOMOLOGY_API: 'https://api.entomology.gov/v1',
+            PLANT_DISEASE_API: 'https://api.plantix.net/v2/detect',
+            CROP_PROTECTION_API: 'https://api.fao.org/cropprotection/v1',
+            LOCATION_API: 'https://api.location-services.com/v1'
+        };
+
+        // Language configurations for multilingual support
+        const languageConfig = {
+            en: {
+                headerTitle: 'AI Pest Detection & Management',
+                headerDescription: 'Advanced pest identification, real-time monitoring, and intelligent treatment recommendations',
+                accuracyLabel: 'Detection Accuracy',
+                speciesLabel: 'Pest Species',
+                monitoringLabel: 'AI Monitoring',
+                alertMessage: 'Current Alert: High aphid activity in your region',
+                riskLevel: 'High Risk',
+                viewAlertText: 'View Details',
+                uploadTitle: 'Pest Identification Scanner',
+                uploadPrompt: 'Upload pest images for instant identification',
+                uploadSubtext: 'Drag & drop or click to browse (JPG, PNG up to 10MB)',
+                browseText: 'Browse Images',
+                analyzeText: 'Identify Pest',
+                insectsLabel: 'Insects',
+                insectsDesc: 'Aphids, beetles, moths',
+                diseasesLabel: 'Diseases',
+                diseasesDesc: 'Fungal, bacterial, viral',
+                weedsLabel: 'Weeds',
+                weedsDesc: 'Invasive plants',
+                wildlifeLabel: 'Wildlife',
+                wildlifeDesc: 'Rodents, birds',
+                resultsTitle: 'Detection Results',
+                shareText: 'Share',
+                saveText: 'Save Report',
+                identifiedPestTitle: 'Identified Pest',
+                confidenceLabel: 'Confidence:',
+                severityLabel: 'Severity:',
+                riskFactorLabel: 'Risk Factor:',
+                spreadRateLabel: 'Spread Rate:',
+                impactAnalysisTitle: 'Impact Analysis',
+                aiRecommendationsTitle: 'AI Treatment Recommendations',
+                treatmentTitle: 'Treatment Plans',
+                organicTreatment: 'Organic Treatment',
+                organicCost: 'Cost: $15-25/hectare',
+                chemicalTreatment: 'Chemical Treatment',
+                chemicalCost: 'Cost: $35-50/hectare',
+                integratedTreatment: 'Integrated Treatment',
+                integratedCost: 'Cost: $25-40/hectare',
+                regionalActivityTitle: 'Regional Pest Activity',
+                weatherImpactTitle: 'Weather Impact on Pests',
+                riskAssessmentTitle: 'Current Risk Level',
+                riskScoreLabel: 'Risk Score',
+                temperatureRisk: 'Temperature Risk',
+                humidityRisk: 'Humidity Risk',
+                seasonalRisk: 'Seasonal Risk',
+                activeAlertsTitle: 'Active Alerts',
+                aphidAlert: 'Aphid Outbreak',
+                aphidLocation: 'Your Region - 2km radius',
+                thripsAlert: 'Thrips Activity',
+                thripsLocation: 'Northern Fields - 5km',
+                beneficialAlert: 'Beneficial Insects',
+                beneficialLocation: 'Good population levels',
+                pestForecastTitle: '7-Day Pest Forecast',
+                pestMapTitle: 'Regional Pest Map',
+                infestationRate: 'Infestation Rate:',
+                treatmentCoverage: 'Treatment Coverage:',
+                quickActionsTitle: 'Quick Actions',
+                pestAIText: 'Pest AI Assistant',
+                reportPestText: 'Report Pest Activity',
+                calculatorText: 'Treatment Calculator',
+                consultText: 'Expert Consultation',
+                aiChatTitle: 'Pest Management AI',
+                aiWelcomeMessage: 'Hello! I\'m your pest management specialist. I can help identify pests, recommend treatments, and provide prevention strategies based on your location and crops. What pest issue would you like to discuss?',
+                reportPestTitle: 'Report Pest Activity',
+                pestTypeLabel: 'Pest Type',
+                severityLevelLabel: 'Severity Level',
+                cropAffectedLabel: 'Crop Affected',
+                descriptionLabel: 'Description',
+                submitReportText: 'Submit Report'
+            },
+            es: {
+                headerTitle: 'Detección y Manejo de Plagas con IA',
+                headerDescription: 'Identificación avanzada de plagas, monitoreo en tiempo real y recomendaciones inteligentes de tratamiento',
+                accuracyLabel: 'Precisión de Detección',
+                speciesLabel: 'Especies de Plagas',
+                monitoringLabel: 'Monitoreo IA',
+                alertMessage: 'Alerta Actual: Alta actividad de áfidos en su región',
+                riskLevel: 'Riesgo Alto',
+                viewAlertText: 'Ver Detalles',
+                uploadTitle: 'Escáner de Identificación de Plagas',
+                uploadPrompt: 'Sube imágenes de plagas para identificación instantánea',
+                uploadSubtext: 'Arrastra y suelta o haz clic para navegar (JPG, PNG hasta 10MB)',
+                browseText: 'Navegar Imágenes',
+                analyzeText: 'Identificar Plaga',
+                insectsLabel: 'Insectos',
+                insectsDesc: 'Áfidos, escarabajos, polillas',
+                diseasesLabel: 'Enfermedades',
+                diseasesDesc: 'Fúngicas, bacterianas, virales',
+                weedsLabel: 'Malezas',
+                weedsDesc: 'Plantas invasivas',
+                wildlifeLabel: 'Fauna',
+                wildlifeDesc: 'Roedores, aves',
+                resultsTitle: 'Resultados de Detección',
+                shareText: 'Compartir',
+                saveText: 'Guardar Reporte',
+                identifiedPestTitle: 'Plaga Identificada',
+                confidenceLabel: 'Confianza:',
+                severityLabel: 'Severidad:',
+                riskFactorLabel: 'Factor de Riesgo:',
+                spreadRateLabel: 'Tasa de Propagación:',
+                impactAnalysisTitle: 'Análisis de Impacto',
+                aiRecommendationsTitle: 'Recomendaciones de Tratamiento IA',
+                treatmentTitle: 'Planes de Tratamiento',
+                organicTreatment: 'Tratamiento Orgánico',
+                organicCost: 'Costo: $15-25/hectárea',
+                chemicalTreatment: 'Tratamiento Químico',
+                chemicalCost: 'Costo: $35-50/hectárea',
+                integratedTreatment: 'Tratamiento Integrado',
+                integratedCost: 'Costo: $25-40/hectárea',
+                regionalActivityTitle: 'Actividad Regional de Plagas',
+                weatherImpactTitle: 'Impacto del Clima en Plagas',
+                riskAssessmentTitle: 'Nivel de Riesgo Actual',
+                riskScoreLabel: 'Puntuación de Riesgo',
+                temperatureRisk: 'Riesgo de Temperatura',
+                humidityRisk: 'Riesgo de Humedad',
+                seasonalRisk: 'Riesgo Estacional',
+                activeAlertsTitle: 'Alertas Activas',
+                aphidAlert: 'Brote de Áfidos',
+                aphidLocation: 'Su Región - radio de 2km',
+                thripsAlert: 'Actividad de Trips',
+                thripsLocation: 'Campos del Norte - 5km',
+                beneficialAlert: 'Insectos Benéficos',
+                beneficialLocation: 'Buenos niveles de población',
+                pestForecastTitle: 'Pronóstico de Plagas 7 Días',
+                pestMapTitle: 'Mapa Regional de Plagas',
+                infestationRate: 'Tasa de Infestación:',
+                treatmentCoverage: 'Cobertura de Tratamiento:',
+                quickActionsTitle: 'Acciones Rápidas',
+                pestAIText: 'Asistente IA de Plagas',
+                reportPestText: 'Reportar Actividad de Plagas',
+                calculatorText: 'Calculadora de Tratamiento',
+                consultText: 'Consulta de Expertos',
+                aiChatTitle: 'IA de Manejo de Plagas',
+                aiWelcomeMessage: '¡Hola! Soy tu especialista en manejo de plagas. Puedo ayudar a identificar plagas, recomendar tratamientos y proporcionar estrategias de prevención basadas en tu ubicación y cultivos. ¿Qué problema de plagas te gustaría discutir?',
+                reportPestTitle: 'Reportar Actividad de Plagas',
+                pestTypeLabel: 'Tipo de Plaga',
+                severityLevelLabel: 'Nivel de Severidad',
+                cropAffectedLabel: 'Cultivo Afectado',
+                descriptionLabel: 'Descripción',
+                submitReportText: 'Enviar Reporte'
+            },
+            fr: {
+                headerTitle: 'Détection et Gestion des Ravageurs par IA',
+                headerDescription: 'Identification avancée des ravageurs, surveillance en temps réel et recommandations intelligentes de traitement',
+                accuracyLabel: 'Précision de Détection',
+                speciesLabel: 'Espèces de Ravageurs',
+                monitoringLabel: 'Surveillance IA',
+                alertMessage: 'Alerte Actuelle: Forte activité de pucerons dans votre région',
+                riskLevel: 'Risque Élevé',
+                viewAlertText: 'Voir Détails',
+                uploadTitle: 'Scanner d\'Identification des Ravageurs',
+                uploadPrompt: 'Téléchargez des images de ravageurs pour identification instantanée',
+                uploadSubtext: 'Glissez-déposez ou cliquez pour parcourir (JPG, PNG jusqu\'à 10MB)',
+                browseText: 'Parcourir Images',
+                analyzeText: 'Identifier Ravageur',
+                insectsLabel: 'Insectes',
+                insectsDesc: 'Pucerons, coléoptères, papillons',
+                diseasesLabel: 'Maladies',
+                diseasesDesc: 'Fongiques, bactériennes, virales',
+                weedsLabel: 'Mauvaises Herbes',
+                weedsDesc: 'Plantes invasives',
+                wildlifeLabel: 'Faune',
+                wildlifeDesc: 'Rongeurs, oiseaux',
+                resultsTitle: 'Résultats de Détection',
+                shareText: 'Partager',
+                saveText: 'Sauvegarder Rapport',
+                identifiedPestTitle: 'Ravageur Identifié',
+                confidenceLabel: 'Confiance:',
+                severityLabel: 'Sévérité:',
+                riskFactorLabel: 'Facteur de Risque:',
+                spreadRateLabel: 'Taux de Propagation:',
+                impactAnalysisTitle: 'Analyse d\'Impact',
+                aiRecommendationsTitle: 'Recommandations de Traitement IA',
+                treatmentTitle: 'Plans de Traitement',
+                organicTreatment: 'Traitement Biologique',
+                organicCost: 'Coût: $15-25/hectare',
+                chemicalTreatment: 'Traitement Chimique',
+                chemicalCost: 'Coût: $35-50/hectare',
+                integratedTreatment: 'Traitement Intégré',
+                integratedCost: 'Coût: $25-40/hectare',
+                regionalActivityTitle: 'Activité Régionale des Ravageurs',
+                weatherImpactTitle: 'Impact Météo sur les Ravageurs',
+                riskAssessmentTitle: 'Niveau de Risque Actuel',
+                riskScoreLabel: 'Score de Risque',
+                temperatureRisk: 'Risque Température',
+                humidityRisk: 'Risque Humidité',
+                seasonalRisk: 'Risque Saisonnier',
+                activeAlertsTitle: 'Alertes Actives',
+                aphidAlert: 'Épidémie de Pucerons',
+                aphidLocation: 'Votre Région - rayon 2km',
+                thripsAlert: 'Activité de Thrips',
+                thripsLocation: 'Champs du Nord - 5km',
+                beneficialAlert: 'Insectes Bénéfiques',
+                beneficialLocation: 'Bons niveaux de population',
+                pestForecastTitle: 'Prévision Ravageurs 7 Jours',
+                pestMapTitle: 'Carte Régionale des Ravageurs',
+                infestationRate: 'Taux d\'Infestation:',
+                treatmentCoverage: 'Couverture de Traitement:',
+                quickActionsTitle: 'Actions Rapides',
+                pestAIText: 'Assistant IA Ravageurs',
+                reportPestText: 'Signaler Activité Ravageurs',
+                calculatorText: 'Calculateur de Traitement',
+                consultText: 'Consultation d\'Expert',
+                aiChatTitle: 'IA de Gestion des Ravageurs',
+                aiWelcomeMessage: 'Bonjour! Je suis votre spécialiste en gestion des ravageurs. Je peux aider à identifier les ravageurs, recommander des traitements et fournir des stratégies de prévention basées sur votre emplacement et vos cultures. Quel problème de ravageurs aimeriez-vous discuter?',
+                reportPestTitle: 'Signaler Activité des Ravageurs',
+                pestTypeLabel: 'Type de Ravageur',
+                severityLevelLabel: 'Niveau de Sévérité',
+                cropAffectedLabel: 'Culture Affectée',
+                descriptionLabel: 'Description',
+                submitReportText: 'Soumettre Rapport'
+            },
+            sw: {
+                headerTitle: 'Utambuzi wa Wadudu wa AI na Usimamizi',
+                headerDescription: 'Utambuzi wa hali ya juu wa wadudu, ufuatiliaji wa muda halisi, na mapendekezo mahiri ya matibabu',
+                accuracyLabel: 'Usahihi wa Utambuzi',
+                speciesLabel: 'Aina za Wadudu',
+                monitoringLabel: 'Ufuatiliaji wa AI',
+                alertMessage: 'Tahadhari ya Sasa: Shughuli nyingi za wadudu mkoa wako',
+                riskLevel: 'Hatari Kubwa',
+                viewAlertText: 'Ona Maelezo',
+                uploadTitle: 'Kivinjari cha Utambuzi wa Wadudu',
+                uploadPrompt: 'Pakia picha za wadudu kwa utambuzi wa papo hapo',
+                uploadSubtext: 'Buruta na udondoshe au bonyeza kutafuta (JPG, PNG hadi 10MB)',
+                browseText: 'Tafuta Picha',
+                analyzeText: 'Tambua Mdudu',
+                insectsLabel: 'Wadudu',
+                insectsDesc: 'Wadudu, mende, kipepeo',
+                diseasesLabel: 'Magonjwa',
+                diseasesDesc: 'Kuvu, bakteria, virusi',
+                weedsLabel: 'Magugu',
+                weedsDesc: 'Mimea mbaya',
+                wildlifeLabel: 'Wanyamapori',
+                wildlifeDesc: 'Panya, ndege',
+                resultsTitle: 'Matokeo ya Utambuzi',
+                shareText: 'Shiriki',
+                saveText: 'Hifadhi Ripoti',
+                identifiedPestTitle: 'Mdudu Aliyetambuliwa',
+                confidenceLabel: 'Uaminifu:',
+                severityLabel: 'Ukali:',
+                riskFactorLabel: 'Kipimo cha Hatari:',
+                spreadRateLabel: 'Kiwango cha Kuenea:',
+                impactAnalysisTitle: 'Uchambuzi wa Athari',
+                aiRecommendationsTitle: 'Mapendekezo ya Matibabu ya AI',
+                treatmentTitle: 'Mipango ya Matibabu',
+                organicTreatment: 'Matibabu ya Asili',
+                organicCost: 'Gharama: $15-25/hekta',
+                chemicalTreatment: 'Matibabu ya Kemikali',
+                chemicalCost: 'Gharama: $35-50/hekta',
+                integratedTreatment: 'Matibabu Jumuishi',
+                integratedCost: 'Gharama: $25-40/hekta',
+                regionalActivityTitle: 'Shughuli za Wadudu za Kikanda',
+                weatherImpactTitle: 'Athari za Hali ya Hewa kwa Wadudu',
+                riskAssessmentTitle: 'Kiwango cha Hatari cha Sasa',
+                riskScoreLabel: 'Alama za Hatari',
+                temperatureRisk: 'Hatari ya Joto',
+                humidityRisk: 'Hatari ya Unyevu',
+                seasonalRisk: 'Hatari ya Msimu',
+                activeAlertsTitle: 'Tahadhari Zinazofanya Kazi',
+                aphidAlert: 'Mlipuko wa Wadudu',
+                aphidLocation: 'Eneo Lako - umbali wa km 2',
+                thripsAlert: 'Shughuli za Thrips',
+                thripsLocation: 'Mashamba ya Kaskazini - km 5',
+                beneficialAlert: 'Wadudu Wazuri',
+                beneficialLocation: 'Viwango vizuri vya idadi',
+                pestForecastTitle: 'Utabiri wa Wadudu wa Siku 7',
+                pestMapTitle: 'Ramani ya Wadudu ya Kikanda',
+                infestationRate: 'Kiwango cha Uvamizi:',
+                treatmentCoverage: 'Uongozi wa Matibabu:',
+                quickActionsTitle: 'Vitendo vya Haraka',
+                pestAIText: 'Msaidizi wa AI wa Wadudu',
+                reportPestText: 'Ripoti Shughuli za Wadudu',
+                calculatorText: 'Kikokotozi cha Matibabu',
+                consultText: 'Ushauri wa Mtaalamu',
+                aiChatTitle: 'AI ya Usimamizi wa Wadudu',
+                aiWelcomeMessage: 'Habari! Mimi ni mtaalamu wako wa usimamizi wa wadudu. Ninaweza kusaidia kutambua wadudu, kupendekeza matibabu, na kutoa mikakati ya kuzuia kulingana na eneo lako na mazao. Ni tatizo gani la wadudu ungependa kujadili?',
+                reportPestTitle: 'Ripoti Shughuli za Wadudu',
+                pestTypeLabel: 'Aina ya Mdudu',
+                severityLevelLabel: 'Kiwango cha Ukali',
+                cropAffectedLabel: 'Zao Lililoathiriwa',
+                descriptionLabel: 'Maelezo',
+                submitReportText: 'Wasilisha Ripoti'
+            },
+            hi: {
+                headerTitle: 'AI कीट पहचान और प्रबंधन',
+                headerDescription: 'उन्नत कीट पहचान, वास्तविक समय निगरानी, और बुद्धिमान उपचार सिफारिशें',
+                accuracyLabel: 'पहचान सटीकता',
+                speciesLabel: 'कीट प्रजातियां',
+                monitoringLabel: 'AI निगरानी',
+                alertMessage: 'वर्तमान अलर्ट: आपके क्षेत्र में उच्च एफिड गतिविधि',
+                riskLevel: 'उच्च जोखिम',
+                viewAlertText: 'विवरण देखें',
+                uploadTitle: 'कीट पहचान स्कैनर',
+                uploadPrompt: 'तत्काल पहचान के लिए कीट छवियां अपलोड करें',
+                uploadSubtext: 'खींचें और छोड़ें या ब्राउज़ करने के लिए क्लिक करें (JPG, PNG 10MB तक)',
+                browseText: 'छवियां ब्राउज़ करें',
+                analyzeText: 'कीट की पहचान करें',
+                insectsLabel: 'कीड़े',
+                insectsDesc: 'एफिड्स, बीटल, मॉथ',
+                diseasesLabel: 'रोग',
+                diseasesDesc: 'फंगल, बैक्टीरियल, वायरल',
+                weedsLabel: 'खरपतवार',
+                weedsDesc: 'आक्रामक पौधे',
+                wildlifeLabel: 'वन्यजीव',
+                wildlifeDesc: 'कृंतक, पक्षी',
+                resultsTitle: 'पहचान परिणाम',
+                shareText: 'साझा करें',
+                saveText: 'रिपोर्ट सहेजें',
+                identifiedPestTitle: 'पहचाना गया कीट',
+                confidenceLabel: 'विश्वास:',
+                severityLabel: 'गंभीरता:',
+                riskFactorLabel: 'जोखिम कारक:',
+                spreadRateLabel: 'फैलाव दर:',
+                impactAnalysisTitle: 'प्रभाव विश्लेषण',
+                aiRecommendationsTitle: 'AI उपचार सिफारिशें',
+                treatmentTitle: 'उपचार योजनाएं',
+                organicTreatment: 'जैविक उपचार',
+                organicCost: 'लागत: $15-25/हेक्टेयर',
+                chemicalTreatment: 'रासायनिक उपचार',
+                chemicalCost: 'लागत: $35-50/हेक्टेयर',
+                integratedTreatment: 'एकीकृत उपचार',
+                integratedCost: 'लागत: $25-40/हेक्टेयर',
+                regionalActivityTitle: 'क्षेत्रीय कीट गतिविधि',
+                weatherImpactTitle: 'कीटों पर मौसम का प्रभाव',
+                riskAssessmentTitle: 'वर्तमान जोखिम स्तर',
+                riskScoreLabel: 'जोखिम स्कोर',
+                temperatureRisk: 'तापमान जोखिम',
+                humidityRisk: 'आर्द्रता जोखिम',
+                seasonalRisk: 'मौसमी जोखिम',
+                activeAlertsTitle: 'सक्रिय अलर्ट',
+                aphidAlert: 'एफिड प्रकोप',
+                aphidLocation: 'आपका क्षेत्र - 2 किमी त्रिज्या',
+                thripsAlert: 'थ्रिप्स गतिविधि',
+                thripsLocation: 'उत्तरी खेत - 5 किमी',
+                beneficialAlert: 'लाभकारी कीड़े',
+                beneficialLocation: 'अच्छे जनसंख्या स्तर',
+                pestForecastTitle: '7-दिन कीट पूर्वानुमान',
+                pestMapTitle: 'क्षेत्रीय कीट मानचित्र',
+                infestationRate: 'संक्रमण दर:',
+                treatmentCoverage: 'उपचार कवरेज:',
+                quickActionsTitle: 'त्वरित क्रियाएं',
+                pestAIText: 'कीट AI सहायक',
+                reportPestText: 'कीट गतिविधि रिपोर्ट करें',
+                calculatorText: 'उपचार कैलकुलेटर',
+                consultText: 'विशेषज्ञ परामर्श',
+                aiChatTitle: 'कीट प्रबंधन AI',
+                aiWelcomeMessage: 'नमस्ते! मैं आपका कीट प्रबंधन विशेषज्ञ हूं। मैं कीटों की पहचान करने, उपचार सुझाने और आपके स्थान और फसलों के आधार पर रोकथाम रणनीति प्रदान करने में मदद कर सकता हूं। आप किस कीट समस्या पर चर्चा करना चाहेंगे?',
+                reportPestTitle: 'कीट गतिविधि रिपोर्ट करें',
+                pestTypeLabel: 'कीट प्रकार',
+                severityLevelLabel: 'गंभीरता स्तर',
+                cropAffectedLabel: 'प्रभावित फसल',
+                descriptionLabel: 'विवरण',
+                submitReportText: 'रिपोर्ट जमा करें'
+            },
+            ar: {
+                headerTitle: 'كشف ومكافحة الآفات بالذكاء الاصطناعي',
+                headerDescription: 'تحديد متقدم للآفات، مراقبة في الوقت الفعلي، وتوصيات ذكية للعلاج',
+                accuracyLabel: 'دقة الكشف',
+                speciesLabel: 'أنواع الآفات',
+                monitoringLabel: 'مراقبة الذكاء الاصطناعي',
+                alertMessage: 'تنبيه حالي: نشاط عالي للمن في منطقتك',
+                riskLevel: 'خطر عالي',
+                viewAlertText: 'عرض التفاصيل',
+                uploadTitle: 'ماسح تحديد الآفات',
+                uploadPrompt: 'تحميل صور الآفات للتحديد الفوري',
+                uploadSubtext: 'اسحب وأفلت أو انقر للتصفح (JPG, PNG حتى 10MB)',
+                browseText: 'تصفح الصور',
+                analyzeText: 'تحديد الآفة',
+                insectsLabel: 'الحشرات',
+                insectsDesc: 'المن، الخنافس، العث',
+                diseasesLabel: 'الأمراض',
+                diseasesDesc: 'فطرية، بكتيرية، فيروسية',
+                weedsLabel: 'الأعشاب الضارة',
+                weedsDesc: 'النباتات الغازية',
+                wildlifeLabel: 'الحياة البرية',
+                wildlifeDesc: 'القوارض، الطيور',
+                resultsTitle: 'نتائج الكشف',
+                shareText: 'مشاركة',
+                saveText: 'حفظ التقرير',
+                identifiedPestTitle: 'الآفة المحددة',
+                confidenceLabel: 'الثقة:',
+                severityLabel: 'الشدة:',
+                riskFactorLabel: 'عامل الخطر:',
+                spreadRateLabel: 'معدل الانتشار:',
+                impactAnalysisTitle: 'تحليل التأثير',
+                aiRecommendationsTitle: 'توصيات العلاج بالذكاء الاصطناعي',
+                treatmentTitle: 'خطط العلاج',
+                organicTreatment: 'العلاج العضوي',
+                organicCost: 'التكلفة: $15-25/هكتار',
+                chemicalTreatment: 'العلاج الكيميائي',
+                chemicalCost: 'التكلفة: $35-50/هكتار',
+                integratedTreatment: 'العلاج المتكامل',
+                integratedCost: 'التكلفة: $25-40/هكتار',
+                regionalActivityTitle: 'نشاط الآفات الإقليمي',
+                weatherImpactTitle: 'تأثير الطقس على الآفات',
+                riskAssessmentTitle: 'مستوى الخطر الحالي',
+                riskScoreLabel: 'نقاط الخطر',
+                temperatureRisk: 'خطر درجة الحرارة',
+                humidityRisk: 'خطر الرطوبة',
+                seasonalRisk: 'الخطر الموسمي',
+                activeAlertsTitle: 'التنبيهات النشطة',
+                aphidAlert: 'تفشي المن',
+                aphidLocation: 'منطقتك - نطاق 2 كم',
+                thripsAlert: 'نشاط التربس',
+                thripsLocation: 'الحقول الشمالية - 5 كم',
+                beneficialAlert: 'الحشرات المفيدة',
+                beneficialLocation: 'مستويات جيدة من التعداد',
+                pestForecastTitle: 'توقعات الآفات لـ 7 أيام',
+                pestMapTitle: 'خريطة الآفات الإقليمية',
+                infestationRate: 'معدل الإصابة:',
+                treatmentCoverage: 'تغطية العلاج:',
+                quickActionsTitle: 'إجراءات سريعة',
+                pestAIText: 'مساعد الذكاء الاصطناعي للآفات',
+                reportPestText: 'الإبلاغ عن نشاط الآفات',
+                calculatorText: 'حاسبة العلاج',
+                consultText: 'استشارة خبير',
+                aiChatTitle: 'ذكاء اصطناعي لإدارة الآفات',
+                aiWelcomeMessage: 'مرحباً! أنا أخصائي إدارة الآفات الخاص بك. يمكنني المساعدة في تحديد الآفات وتوصية العلاجات وتقديم استراتيجيات الوقاية بناءً على موقعك ومحاصيلك. ما هي مشكلة الآفات التي تريد مناقشتها؟',
+                reportPestTitle: 'الإبلاغ عن نشاط الآفات',
+                pestTypeLabel: 'نوع الآفة',
+                severityLevelLabel: 'مستوى الشدة',
+                cropAffectedLabel: 'المحصول المتأثر',
+                descriptionLabel: 'الوصف',
+                submitReportText: 'إرسال التقرير'
+            }
+        };
+
+        // Pest database for identification
+        const pestDatabase = {
+            'aphids': {
+                name: 'Aphid (Aphis gossypii)',
+                category: 'Sucking Insect',
+                severity: 'high',
+                confidence: 92,
+                riskFactor: 8.2,
+                spreadRate: 'Rapid',
+                description: 'Small, soft-bodied insects that feed on plant sap',
+                symptoms: ['Curled leaves', 'Honeydew deposits', 'Sooty mold', 'Stunted growth'],
+                treatment: {
+                    organic: ['Neem oil spray (2%)', 'Beneficial insects release', 'Soap solution application'],
+                    chemical: ['Imidacloprid 17.8% SL', 'Thiamethoxam 25% WG', 'Deltamethrin 2.8% EC'],
+                    integrated: ['Biological + Chemical', 'Cultural practices', 'Monitoring & prevention']
+                }
+            },
+            'thrips': {
+                name: 'Thrips (Frankliniella occidentalis)',
+                category: 'Rasping Insect',
+                severity: 'medium',
+                confidence: 87,
+                riskFactor: 6.5,
+                spreadRate: 'Moderate',
+                description: 'Tiny insects that rasp plant tissues and suck fluids',
+                symptoms: ['Silver streaks on leaves', 'Black spots', 'Leaf distortion', 'Flower damage'],
+                treatment: {
+                    organic: ['Blue sticky traps', 'Predatory mites', 'Spinosad spray'],
+                    chemical: ['Fipronil 5% SC', 'Chlorfenapyr 10% SC', 'Acetamiprid 20% SP'],
+                    integrated: ['IPM approach', 'Resistant varieties', 'Crop rotation']
+                }
+            },
+            'whiteflies': {
+                name: 'Whitefly (Bemisia tabaci)',
+                category: 'Flying Insect',
+                severity: 'high',
+                confidence: 89,
+                riskFactor: 7.8,
+                spreadRate: 'Very Rapid',
+                description: 'Small white flying insects that transmit viral diseases',
+                symptoms: ['Yellow sticky honeydew', 'Leaf yellowing', 'Virus transmission', 'Weak plants'],
+                treatment: {
+                    organic: ['Yellow sticky traps', 'Reflective mulch', 'Encarsia wasps'],
+                    chemical: ['Spiromesifen 22.9% SC', 'Buprofezin 25% SC', 'Pyriproxyfen 10% EC'],
+                    integrated: ['Early detection', 'Resistant varieties', 'Field sanitation']
+                }
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializeGeolocation();
+            initializeWeatherData();
+            initializePoeAPI();
+            setupEventListeners();
+            initializeMap();
+            updateLanguageInterface();
+            generateCharts();
+            startPestMonitoring();
+            updatePestForecast();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI pest management
+        function initializePoeAPI() {
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('pest-ai-handler', handlePestAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe
+        function handlePestAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    updateAIChatMessage(aiMessage.content);
+                } else if (aiMessage.status === 'complete') {
+                    finalizeAIChatMessage(aiMessage.content);
+                    isAIResponding = false;
+                    
+                    // If this is a pest identification response, update recommendations
+                    if (context && context.type === 'pest-identification') {
+                        updatePestRecommendations(aiMessage.content);
+                    }
+                } else if (aiMessage.status === 'error') {
+                    showAIError();
+                    isAIResponding = false;
+                }
+            }
+        }
+
+        // Send pest data to AI for identification and recommendations
+        async function sendPestDataToAI(pestData, imageData = null) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            
+            const contextPrompt = buildPestAnalysisPrompt(pestData, imageData);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'pest-ai-handler',
+                        stream: true,
+                        openChat: false,
+                        handlerContext: { type: 'pest-identification' }
+                    });
+                } else {
+                    // Fallback to local analysis
+                    setTimeout(() => {
+                        const analysis = performLocalPestAnalysis(pestData);
+                        updatePestRecommendations(analysis);
+                        isAIResponding = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Pest AI analysis error:', error);
+                isAIResponding = false;
+            }
+        }
+
+        // Send chat message to AI
+        async function sendChatToAI(userMessage) {
+            if (isAIResponding) return;
+            
+            isAIResponding = true;
+            addAIChatMessage(userMessage, true);
+            showAIThinking();
+            
+            const pestContext = detectedPest ? `Current detected pest: ${JSON.stringify(detectedPest, null, 2)}` : '';
+            const weatherContext = weatherData ? `Current weather: ${JSON.stringify(weatherData, null, 2)}` : '';
+            const locationContext = currentLocation ? `Location: ${currentLocation.latitude}, ${currentLocation.longitude}` : '';
+            
+            const contextPrompt = `You are an expert entomologist and integrated pest management specialist. Help the user with their pest management questions.
+
+Context:
+${pestContext}
+${weatherContext}
+${locationContext}
+
+User question: ${userMessage}
+
+Respond in ${languageConfig[currentLanguage] ? Object.keys(languageConfig).find(key => key === currentLanguage) : 'English'} with helpful pest management advice including:
+- Accurate pest identification
+- Risk assessment based on current conditions
+- Treatment recommendations (organic, chemical, integrated)
+- Prevention strategies
+- Economic impact analysis:`;
+
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(`@Claude-Sonnet-4 ${contextPrompt}`, {
+                        handler: 'pest-ai-handler',
+                        stream: true,
+                        openChat: false,
+                        handlerContext: { type: 'chat' }
+                    });
+                } else {
+                    // Fallback response
+                    setTimeout(() => {
+                        const response = getLocalPestChatResponse(userMessage);
+                        finalizeAIChatMessage(response);
+                        isAIResponding = false;
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('Chat AI error:', error);
+                showAIError();
+                isAIResponding = false;
+            }
+        }
+
+        // Build comprehensive pest analysis prompt
+        function buildPestAnalysisPrompt(pestData, imageData) {
+            const weatherContext = weatherData ? `Current weather conditions: Temperature: ${weatherData.temperature}°C, Humidity: ${weatherData.humidity}%, Conditions: ${weatherData.description}` : '';
+            const locationContext = currentLocation ? `Location: ${currentLocation.latitude}, ${currentLocation.longitude}` : '';
+            
+            const systemPrompt = `You are a world-renowned entomologist and integrated pest management specialist with expertise in:
+- Advanced pest identification and taxonomy
+- Climate-based pest risk assessment
+- Sustainable pest management strategies
+- Economic impact analysis of pest damage
+- Regional pest outbreak prediction
+- Biological control and IPM implementation
+
+Current Analysis Context:
+${weatherContext}
+${locationContext}
+
+Pest Data Provided:
+${JSON.stringify(pestData, null, 2)}
+
+Analysis Instructions:
+1. Provide accurate pest identification with confidence level
+2. Assess severity and economic risk (0-10 scale)
+3. Analyze environmental factors affecting pest development
+4. Recommend comprehensive treatment strategies:
+   - Organic/biological methods
+   - Chemical control options (if necessary)
+   - Integrated pest management approach
+5. Provide specific application rates and timing
+6. Suggest prevention and monitoring strategies
+7. Consider beneficial insects and ecosystem impact
+8. Estimate treatment costs and ROI
+
+Language: Respond in ${languageConfig[currentLanguage] ? Object.keys(languageConfig).find(key => key === currentLanguage) : 'English'}
+
+Provide detailed, actionable pest management recommendations:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Local pest analysis fallback
+        function performLocalPestAnalysis(pestData) {
+            const pest = pestDatabase[pestData.type] || pestDatabase['aphids'];
+            
+            const analysis = {
+                identification: pest,
+                recommendations: [
+                    `Immediate Action: Begin treatment within 24-48 hours to prevent spread`,
+                    `Organic Treatment: Apply ${pest.treatment.organic[0]} at 2ml/L concentration every 7 days`,
+                    `Chemical Option: Use ${pest.treatment.chemical[0]} if infestation is severe (>30% damage)`,
+                    `Monitoring: Check plants every 2-3 days for new infestations`,
+                    `Prevention: Remove weeds and implement crop rotation next season`,
+                    `Biological Control: Introduce beneficial insects like ladybugs or lacewings`
+                ]
+            };
+            
+            return analysis.recommendations.join('\n\n');
+        }
+
+        // Local pest chat response fallback
+        function getLocalPestChatResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+                return languageConfig[currentLanguage]?.aiWelcomeMessage || languageConfig.en.aiWelcomeMessage;
+            }
+            
+            if (lowerMessage.includes('aphid')) {
+                return "Aphids are soft-bodied insects that feed on plant sap. For immediate treatment: 1) Spray with neem oil (2%) every 3-4 days, 2) Introduce ladybugs for biological control, 3) Use yellow sticky traps to monitor populations. Check plants weekly for early detection.";
+            }
+            
+            if (lowerMessage.includes('organic') || lowerMessage.includes('natural')) {
+                return "Organic pest control options include: 1) Neem oil - broad spectrum, safe for beneficials, 2) Beneficial insects - ladybugs, lacewings, parasitic wasps, 3) Companion planting - marigolds, basil, nasturtiums, 4) Physical barriers - row covers, copper strips, 5) Cultural practices - crop rotation, proper spacing.";
+            }
+            
+            if (lowerMessage.includes('prevention') || lowerMessage.includes('prevent')) {
+                return "Pest prevention strategies: 1) Regular monitoring - inspect plants 2-3 times weekly, 2) Healthy soil - improve drainage and fertility, 3) Crop diversity - avoid monocultures, 4) Sanitation - remove plant debris and weeds, 5) Beneficial habitat - maintain hedgerows and flowering plants.";
+            }
+            
+            if (lowerMessage.includes('identify') || lowerMessage.includes('what is')) {
+                return "For pest identification, look for: 1) Physical characteristics - size, color, shape, 2) Damage patterns - chewing, sucking, mining, 3) Location on plant - leaves, stems, roots, fruits, 4) Time of activity - day vs night, seasonal patterns. Upload clear photos for AI identification.";
+            }
+            
+            return "I can help with pest identification, treatment recommendations, prevention strategies, and organic management approaches. Please describe your pest problem or upload images for identification.";
+        }
+
+        // Initialize geolocation for pest risk assessment
+        function initializeGeolocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        };
+                        
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                        fetchRegionalPestData();
+                        updateMapLocation();
+                    },
+                    (error) => {
+                        console.error('Geolocation error:', error);
+                        // Use default location
+                        currentLocation = { latitude: -1.2921, longitude: 36.8219 }; // Nairobi
+                        updateLocationDisplay();
+                        fetchWeatherData();
+                        fetchRegionalPestData();
+                    }
+                );
+            }
+        }
+
+        // Fetch weather data for pest risk assessment
+        async function fetchWeatherData() {
+            if (!currentLocation) return;
+            
+            try {
+                // In production, use real API key
+                const weatherResponse = await fetch(
+                    `${API_CONFIG.OPENWEATHER_URL}/weather?lat=${currentLocation.latitude}&lon=${currentLocation.longitude}&appid=${API_CONFIG.WEATHER_API_KEY}&units=metric`
+                );
+                
+                if (weatherResponse.ok) {
+                    const data = await weatherResponse.json();
+                    weatherData = {
+                        temperature: data.main.temp,
+                        humidity: data.main.humidity,
+                        windSpeed: data.wind.speed * 3.6,
+                        description: data.weather[0].description,
+                        pressure: data.main.pressure
+                    };
+                    
+                    updateWeatherDisplay();
+                    calculatePestRisk();
+                } else {
+                    // Use demo data
+                    useDefaultWeatherData();
+                }
+            } catch (error) {
+                console.error('Weather API error:', error);
+                useDefaultWeatherData();
+            }
+        }
+
+        // Use default weather data when API fails
+        function useDefaultWeatherData() {
+            weatherData = {
+                temperature: 26,
+                humidity: 78,
+                windSpeed: 12,
+                description: 'partly cloudy',
+                pressure: 1013
+            };
+            updateWeatherDisplay();
+            calculatePestRisk();
+        }
+
+        // Fetch regional pest data
+        async function fetchRegionalPestData() {
+            if (!currentLocation) return;
+            
+            try {
+                // In production, integrate with real pest monitoring APIs
+                // Simulate pest data based on location and season
+                const currentMonth = new Date().getMonth();
+                const isWarmSeason = currentMonth >= 3 && currentMonth <= 9;
+                
+                pestData = {
+                    activeOutbreaks: [
+                        {
+                            pest: 'Aphids',
+                            severity: isWarmSeason ? 'high' : 'medium',
+                            distance: 2.1,
+                            trend: 'increasing'
+                        },
+                        {
+                            pest: 'Thrips',
+                            severity: 'medium',
+                            distance: 5.3,
+                            trend: 'stable'
+                        }
+                    ],
+                    beneficialInsects: 'good',
+                    overallRisk: isWarmSeason ? 'high' : 'medium'
+                };
+                
+                updatePestAlerts();
+            } catch (error) {
+                console.error('Pest data fetch error:', error);
+            }
+        }
+
+        // Calculate pest risk based on weather conditions
+        function calculatePestRisk() {
+            if (!weatherData) return;
+            
+            let riskScore = 0;
+            
+            // Temperature risk (optimal for most pests: 20-30°C)
+            if (weatherData.temperature >= 20 && weatherData.temperature <= 30) {
+                riskScore += 3;
+            } else if (weatherData.temperature >= 15 && weatherData.temperature <= 35) {
+                riskScore += 2;
+            } else {
+                riskScore += 1;
+            }
+            
+            // Humidity risk (high humidity favors many pests)
+            if (weatherData.humidity >= 70) {
+                riskScore += 3;
+            } else if (weatherData.humidity >= 50) {
+                riskScore += 2;
+            } else {
+                riskScore += 1;
+            }
+            
+            // Seasonal risk
+            const currentMonth = new Date().getMonth();
+            if (currentMonth >= 3 && currentMonth <= 9) { // Growing season
+                riskScore += 2;
+            } else {
+                riskScore += 1;
+            }
+            
+            // Wind risk (low wind increases pest pressure)
+            if (weatherData.windSpeed < 10) {
+                riskScore += 1;
+            }
+            
+            const totalRisk = Math.min(riskScore, 10);
+            updateRiskDisplay(totalRisk);
+        }
+
+        // Update weather display
+        function updateWeatherDisplay() {
+            if (!weatherData) return;
+            
+            document.getElementById('currentTemp').textContent = `${Math.round(weatherData.temperature)}°C`;
+            document.getElementById('humidity').textContent = `${weatherData.humidity}%`;
+        }
+
+        // Update location display
+        function updateLocationDisplay() {
+            if (!currentLocation) return;
+            
+            // This would typically reverse geocode to get location name
+            // For demo, showing coordinates
+        }
+
+        // Update risk display
+        function updateRiskDisplay(riskScore) {
+            document.getElementById('riskScore').textContent = riskScore.toFixed(1);
+            
+            let riskLevel, riskClass;
+            if (riskScore >= 8) {
+                riskLevel = 'Critical Risk';
+                riskClass = 'text-red-600';
+            } else if (riskScore >= 6) {
+                riskLevel = 'High Risk';
+                riskClass = 'text-red-600';
+            } else if (riskScore >= 4) {
+                riskLevel = 'Medium Risk';
+                riskClass = 'text-orange-600';
+            } else {
+                riskLevel = 'Low Risk';
+                riskClass = 'text-green-600';
+            }
+            
+            const riskElement = document.getElementById('currentRiskLevel');
+            riskElement.textContent = riskLevel;
+            riskElement.className = `text-lg font-semibold ${riskClass}`;
+        }
+
+        // Update pest alerts
+        function updatePestAlerts() {
+            if (!pestData) return;
+            
+            const alertMessage = `Current Alert: High ${pestData.activeOutbreaks[0].pest.toLowerCase()} activity in your region`;
+            document.getElementById('alertMessage').textContent = alertMessage;
+        }
+
+        // Initialize map
+        function initializeMap() {
+            const defaultLocation = currentLocation || { latitude: -1.2921, longitude: 36.8219 };
+            
+            map = L.map('pestMap').setView([defaultLocation.latitude, defaultLocation.longitude], 12);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Add pest hotspots
+            const pestHotspot1 = L.circle([defaultLocation.latitude + 0.01, defaultLocation.longitude + 0.01], {
+                color: '#dc2626',
+                fillColor: '#dc2626',
+                fillOpacity: 0.3,
+                radius: 500
+            }).addTo(map);
+            pestHotspot1.bindPopup('Aphid Outbreak<br>Severity: High<br>Affected Area: 2.3 km²');
+            
+            const pestHotspot2 = L.circle([defaultLocation.latitude - 0.02, defaultLocation.longitude + 0.015], {
+                color: '#f59e0b',
+                fillColor: '#f59e0b',
+                fillOpacity: 0.3,
+                radius: 300
+            }).addTo(map);
+            pestHotspot2.bindPopup('Thrips Activity<br>Severity: Medium<br>Affected Area: 0.8 km²');
+            
+            // Add farm location marker
+            const farmIcon = L.divIcon({
+                className: 'custom-farm-marker',
+                html: '<i class="fas fa-map-marker-alt text-2xl text-green-600"></i>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            });
+            
+            L.marker([defaultLocation.latitude, defaultLocation.longitude], { icon: farmIcon })
+                .addTo(map)
+                .bindPopup('Your Farm')
+                .openPopup();
+        }
+
+        // Update map location
+        function updateMapLocation() {
+            if (map && currentLocation) {
+                map.setView([currentLocation.latitude, currentLocation.longitude], 12);
+            }
+        }
+
+        // Generate charts
+        function generateCharts() {
+            generatePestActivityChart();
+            generateWeatherImpactChart();
+        }
+
+        // Generate pest activity chart
+        function generatePestActivityChart() {
+            const ctx = document.getElementById('pestActivityChart').getContext('2d');
+            
+            const labels = [];
+            const aphidData = [];
+            const thripsData = [];
+            const whitefliesData = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en', { weekday: 'short' }));
+                
+                // Simulate pest activity data
+                aphidData.push(Math.floor(Math.random() * 50) + 30);
+                thripsData.push(Math.floor(Math.random() * 30) + 15);
+                whitefliesData.push(Math.floor(Math.random() * 25) + 10);
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Aphids',
+                        data: aphidData,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Thrips',
+                        data: thripsData,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Whiteflies',
+                        data: whitefliesData,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Pest Count'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate weather impact chart
+        function generateWeatherImpactChart() {
+            const ctx = document.getElementById('weatherImpactChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Temperature', 'Humidity', 'Wind Speed', 'Rainfall', 'Sunshine', 'Pressure'],
+                    datasets: [{
+                        label: 'Current Risk',
+                        data: [8, 9, 3, 2, 7, 5],
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.2)',
+                        pointBackgroundColor: '#dc2626'
+                    }, {
+                        label: 'Optimal Range',
+                        data: [5, 5, 5, 5, 5, 5],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        pointBackgroundColor: '#22c55e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 10
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update pest forecast
+        function updatePestForecast() {
+            const container = document.getElementById('pestForecast');
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const pests = ['Aphids', 'Thrips', 'Whiteflies', 'Beetles'];
+            
+            container.innerHTML = '';
+            
+            days.forEach((day, index) => {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded';
+                
+                const riskLevel = Math.floor(Math.random() * 4);
+                const severityClass = ['severity-low', 'severity-medium', 'severity-high', 'severity-critical'][riskLevel];
+                const pest = pests[Math.floor(Math.random() * pests.length)];
+                
+                dayElement.innerHTML = `
+                    <span class="text-sm font-semibold text-gray-800 dark:text-white">${day}</span>
+                    <span class="text-xs text-gray-600 dark:text-gray-300">${pest}</span>
+                    <span class="severity-indicator ${severityClass}"></span>
+                `;
+                
+                container.appendChild(dayElement);
+            });
+        }
+
+        // Start pest monitoring
+        function startPestMonitoring() {
+            // Simulate real-time data updates
+            setInterval(() => {
+                updatePestMetrics();
+                updateSensorStatus();
+            }, 30000); // Update every 30 seconds
+        }
+
+        // Update pest metrics
+        function updatePestMetrics() {
+            // Simulate changing pest activity
+            const riskScore = 7.8 + (Math.random() - 0.5) * 0.5;
+            document.getElementById('riskScore').textContent = riskScore.toFixed(1);
+        }
+
+        // Update sensor status
+        function updateSensorStatus() {
+            // Simulate sensor updates
+            const sensors = document.querySelectorAll('.severity-indicator');
+            sensors.forEach(sensor => {
+                const random = Math.random();
+                sensor.className = 'severity-indicator ' + 
+                    (random > 0.7 ? 'severity-high' : 
+                     random > 0.4 ? 'severity-medium' : 'severity-low');
+            });
+        }
+
+        // Update language interface
+        function updateLanguageInterface() {
+            const config = languageConfig[currentLanguage];
+            if (!config) return;
+            
+            // Update all translatable elements
+            Object.keys(config).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.textContent = config[key];
+                }
+            });
+        }
+
+        // Handle file upload for pest identification
+        function handleFileUpload(files) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const imageDiv = document.createElement('div');
+                        imageDiv.className = 'relative';
+                        imageDiv.innerHTML = `
+                            <img src="${e.target.result}" alt="Pest sample ${index + 1}" class="w-full h-32 object-cover rounded-lg">
+                            <button onclick="removeImage(${index})" class="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                        preview.appendChild(imageDiv);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('uploadContent').classList.add('hidden');
+            document.getElementById('uploadPreview').classList.remove('hidden');
+        }
+
+        // Analyze pest images
+        function analyzePestImages() {
+            // Show analysis progress
+            showAnalysisProgress();
+            
+            // Simulate analysis with real AI integration
+            setTimeout(() => {
+                const demoPestData = {
+                    type: 'aphids',
+                    confidence: 92,
+                    severity: 'high',
+                    location: currentLocation
+                };
+                
+                displayDetectionResults(demoPestData);
+                sendPestDataToAI(demoPestData);
+            }, 3000);
+        }
+
+        // Show analysis progress
+        function showAnalysisProgress() {
+            const modal = document.createElement('div');
+            modal.id = 'progressModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
+                    <div class="text-center">
+                        <div class="w-16 h-16 pest-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-bug text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">Analyzing Pest Sample</h3>
+                        <div class="relative w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full mb-4 overflow-hidden">
+                            <div class="scanning-animation h-4 w-8"></div>
+                        </div>
+                        <div id="progressText" class="text-gray-600 dark:text-gray-300">Processing images...</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Simulate progress steps
+            const steps = [
+                'Processing images...',
+                'Extracting features...',
+                'Comparing with database...',
+                'Analyzing pest characteristics...',
+                'Generating recommendations...'
+            ];
+            
+            let currentStep = 0;
+            const interval = setInterval(() => {
+                currentStep++;
+                if (currentStep < steps.length) {
+                    document.getElementById('progressText').textContent = steps[currentStep];
+                } else {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        modal.remove();
+                    }, 500);
+                }
+            }, 600);
+        }
+
+        // Display detection results
+        function displayDetectionResults(data) {
+            detectedPest = data;
+            const pest = pestDatabase[data.type];
+            
+            // Update pest information
+            document.getElementById('pestName').textContent = pest.name;
+            document.getElementById('pestCategory').textContent = pest.category;
+            document.getElementById('confidenceIndicator').style.left = `${data.confidence}%`;
+            document.getElementById('confidenceValue').textContent = `${data.confidence}%`;
+            document.getElementById('severityValue').textContent = pest.severity.charAt(0).toUpperCase() + pest.severity.slice(1);
+            document.getElementById('riskFactorValue').textContent = `${pest.riskFactor}/10`;
+            document.getElementById('spreadRateValue').textContent = pest.spreadRate;
+            
+            // Generate impact chart
+            generateImpactChart(pest);
+            
+            // Show results
+            document.getElementById('detectionResults').classList.remove('hidden');
+            document.getElementById('treatmentPlans').classList.remove('hidden');
+        }
+
+        // Generate impact chart
+        function generateImpactChart(pest) {
+            const ctx = document.getElementById('impactChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Yield Loss', 'Quality Impact', 'Treatment Cost'],
+                    datasets: [{
+                        data: [35, 25, 15],
+                        backgroundColor: ['#dc2626', '#f59e0b', '#8b5cf6'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 11
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update pest recommendations
+        function updatePestRecommendations(recommendations) {
+            const container = document.getElementById('recommendationsList');
+            container.innerHTML = '';
+            
+            const recommendationList = recommendations.split('\n\n').filter(rec => rec.trim());
+            
+            recommendationList.forEach((recommendation, index) => {
+                const recDiv = document.createElement('div');
+                recDiv.className = 'bg-white dark:bg-gray-800 p-4 rounded-lg border border-blue-200 dark:border-blue-700';
+                recDiv.innerHTML = `
+                    <div class="flex items-start space-x-3">
+                        <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span class="text-white text-sm font-bold">${index + 1}</span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-gray-800 dark:text-white">${recommendation}</p>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(recDiv);
+            });
+        }
+
+        // Chat message functions
+        function addAIChatMessage(message, isUser = false) {
+            const container = document.getElementById('aiChatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isUser ? 'justify-end' : ''}`;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `
+                    <div class="bg-pest text-white p-3 rounded-lg max-w-xs">
+                        <p class="text-sm">${message}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 bg-pest rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${message}</p>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showAIThinking() {
+            const container = document.getElementById('aiChatMessages');
+            const thinkingDiv = document.createElement('div');
+            thinkingDiv.id = 'aiThinking';
+            thinkingDiv.className = 'flex items-start space-x-3';
+            
+            thinkingDiv.innerHTML = `
+                <div class="w-8 h-8 bg-pest rounded-full flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-sm"></i>
+                </div>
+                <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <div class="ai-thinking h-4 rounded"></div>
+                </div>
+            `;
+            
+            container.appendChild(thinkingDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.innerHTML = `
+                    <div class="w-8 h-8 bg-pest rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                        <p class="text-gray-800 dark:text-white text-sm">${content}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function finalizeAIChatMessage(content) {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addAIChatMessage(content, false);
+        }
+
+        function showAIError() {
+            const thinkingElement = document.getElementById('aiThinking');
+            if (thinkingElement) {
+                thinkingElement.remove();
+            }
+            addAIChatMessage("I apologize, but I'm having trouble analyzing pest data right now. Please try again or contact our support team.", false);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Language selector
+            document.getElementById('languageSelector').addEventListener('change', function() {
+                currentLanguage = this.value;
+                updateLanguageInterface();
+            });
+
+            // File upload
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            document.getElementById('browseFiles').addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files);
+                }
+            });
+            
+            // Drag and drop
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileUpload(e.dataTransfer.files);
+                }
+            });
+
+            // Pest category buttons
+            document.querySelectorAll('.pest-category').forEach(button => {
+                button.addEventListener('click', function() {
+                    document.querySelectorAll('.pest-category').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const category = this.dataset.category;
+                    filterPestsByCategory(category);
+                });
+            });
+
+            // Analysis
+            document.getElementById('analyzePest').addEventListener('click', analyzePestImages);
+
+            // Results actions
+            document.getElementById('shareResults').addEventListener('click', shareResults);
+            document.getElementById('saveReport').addEventListener('click', saveReport);
+
+            // AI Chat
+            document.getElementById('pestAI').addEventListener('click', () => {
+                document.getElementById('pestAIModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeAIModal').addEventListener('click', () => {
+                document.getElementById('pestAIModal').classList.add('hidden');
+            });
+
+            document.getElementById('sendAIMessage').addEventListener('click', handleChatMessage);
+            document.getElementById('aiChatInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleChatMessage();
+                }
+            });
+
+            // Report pest modal
+            document.getElementById('reportPest').addEventListener('click', () => {
+                document.getElementById('reportPestModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeReportModal').addEventListener('click', () => {
+                document.getElementById('reportPestModal').classList.add('hidden');
+            });
+
+            document.getElementById('submitReport').addEventListener('click', submitPestReport);
+
+            // Quick actions
+            document.getElementById('treatmentCalculator').addEventListener('click', () => {
+                showTreatmentCalculator();
+            });
+
+            document.getElementById('expertConsult').addEventListener('click', () => {
+                showExpertConsultation();
+            });
+
+            // Alert view
+            document.getElementById('viewAlert').addEventListener('click', () => {
+                showPestAlert();
+            });
+        }
+
+        // Filter pests by category
+        function filterPestsByCategory(category) {
+            // In a real application, this would filter the pest database
+            showNotification(`Filtering pests by category: ${category}`, 'info');
+        }
+
+        // Handle chat message
+        function handleChatMessage() {
+            const input = document.getElementById('aiChatInput');
+            const message = input.value.trim();
+            
+            if (message && !isAIResponding) {
+                sendChatToAI(message);
+                input.value = '';
+            }
+        }
+
+        // Submit pest report
+        function submitPestReport() {
+            const pestType = document.getElementById('pestType').value;
+            const severity = document.getElementById('severityLevel').value;
+            const crop = document.getElementById('cropAffected').value;
+            const description = document.getElementById('pestDescription').value;
+            
+            if (!pestType || !severity || !crop || !description) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            // In real application, this would submit to database
+            showNotification('Pest report submitted successfully. Thank you for contributing to community monitoring!', 'success');
+            document.getElementById('reportPestModal').classList.add('hidden');
+            
+            // Reset form
+            document.getElementById('pestType').value = '';
+            document.getElementById('severityLevel').value = 'low';
+            document.getElementById('cropAffected').value = '';
+            document.getElementById('pestDescription').value = '';
+        }
+
+        // Share results
+        function shareResults() {
+            if (navigator.share && detectedPest) {
+                navigator.share({
+                    title: 'Pest Detection Results',
+                    text: `Detected: ${detectedPest.type} with ${detectedPest.confidence}% confidence. Check out this AI-powered analysis.`,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback to clipboard
+                const shareText = `Detected: ${detectedPest?.type || 'Unknown pest'} with ${detectedPest?.confidence || '--'}% confidence. Check out this AI-powered pest analysis at ${window.location.href}`;
+                navigator.clipboard.writeText(shareText).then(() => {
+                    showNotification('Results copied to clipboard!', 'success');
+                });
+            }
+        }
+
+        // Save report
+        function saveReport() {
+            if (!detectedPest) return;
+            
+            const pest = pestDatabase[detectedPest.type];
+            const report = `Pest Detection Report
+Generated: ${new Date().toLocaleDateString()}
+
+Location: ${currentLocation ? `${currentLocation.latitude}, ${currentLocation.longitude}` : 'Not specified'}
+
+Identified Pest: ${pest.name}
+Category: ${pest.category}
+Confidence: ${detectedPest.confidence}%
+Severity: ${pest.severity.charAt(0).toUpperCase() + pest.severity.slice(1)}
+Risk Factor: ${pest.riskFactor}/10
+Spread Rate: ${pest.spreadRate}
+
+Weather Conditions:
+- Temperature: ${weatherData?.temperature || '--'}°C
+- Humidity: ${weatherData?.humidity || '--'}%
+- Conditions: ${weatherData?.description || 'Unknown'}
+
+Treatment Recommendations:
+Organic: ${pest.treatment.organic.join(', ')}
+Chemical: ${pest.treatment.chemical.join(', ')}
+Integrated: ${pest.treatment.integrated.join(', ')}
+
+Symptoms to Watch:
+${pest.symptoms.join(', ')}
+
+Report generated by Agriclimate Connect - AI Pest Detection
+`;
+            
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pest-detection-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Show treatment calculator
+        function showTreatmentCalculator() {
+            showModal('Treatment Calculator', `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Farm Size (hectares)</label>
+                        <input type="number" id="farmSizeCalc" placeholder="5.0" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Infestation Level</label>
+                        <select id="infestationLevel" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                            <option value="low">Low (5-15% damage)</option>
+                            <option value="medium">Medium (15-30% damage)</option>
+                            <option value="high">High (30-50% damage)</option>
+                            <option value="severe">Severe (>50% damage)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Treatment Type</label>
+                        <select id="treatmentType" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-pest dark:bg-gray-700 dark:text-white">
+                            <option value="organic">Organic Treatment</option>
+                            <option value="chemical">Chemical Treatment</option>
+                            <option value="integrated">Integrated Management</option>
+                        </select>
+                    </div>
+                    <button onclick="calculateTreatment()" class="w-full bg-pest text-white py-2 rounded hover:bg-red-700 transition-colors">
+                        Calculate Treatment Plan
+                    </button>
+                    <div id="treatmentResults" class="hidden mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            `);
+        }
+
+        // Show expert consultation
+        function showExpertConsultation() {
+            showModal('Expert Consultation', `
+                <div class="space-y-4">
+                    <p class="text-gray-600 dark:text-gray-300">Connect with certified entomologists and IPM specialists for personalized pest management advice.</p>
+                    <div class="space-y-3">
+                        <div class="border rounded p-3 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold">Dr. Maria Rodriguez</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">Entomologist, IPM Specialist</p>
+                                <p class="text-xs text-gray-500">Specializes in aphid and thrips management</p>
+                            </div>
+                            <button class="bg-green-500 text-white px-4 py-2 rounded text-sm">Available</button>
+                        </div>
+                        <div class="border rounded p-3 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold">Prof. James Chen</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">Agricultural Researcher</p>
+                                <p class="text-xs text-gray-500">Expert in biological control methods</p>
+                            </div>
+                            <button class="bg-yellow-500 text-white px-4 py-2 rounded text-sm">Busy</button>
+                        </div>
+                        <div class="border rounded p-3 flex justify-between items-center">
+                            <div>
+                                <h4 class="font-semibold">Dr. Sarah Johnson</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-300">Crop Protection Specialist</p>
+                                <p class="text-xs text-gray-500">Organic farming and sustainable practices</p>
+                            </div>
+                            <button class="bg-green-500 text-white px-4 py-2 rounded text-sm">Available</button>
+                        </div>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded">
+                        Close
+                    </button>
+                </div>
+            `);
+        }
+
+        // Show pest alert details
+        function showPestAlert() {
+            showModal('Pest Alert Details', `
+                <div class="space-y-4">
+                    <div class="pest-alert p-4 rounded-lg">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                            <h3 class="text-lg font-bold text-red-800">High Aphid Activity Alert</h3>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <p><strong>Location:</strong> Your region and 2km radius</p>
+                            <p><strong>Severity:</strong> High risk</p>
+                            <p><strong>Affected Crops:</strong> Tomatoes, peppers, leafy greens</p>
+                            <p><strong>Weather Factors:</strong> High humidity (78%) and optimal temperature (26°C) are promoting rapid reproduction</p>
+                            <p><strong>Trend:</strong> Increasing over the past 3 days</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 dark:text-blue-300 mb-2">Immediate Actions Recommended:</h4>
+                        <ul class="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                            <li>• Inspect plants daily for early signs</li>
+                            <li>• Apply neem oil spray if colonies detected</li>
+                            <li>• Release beneficial insects (ladybugs, lacewings)</li>
+                            <li>• Remove weeds that harbor aphids</li>
+                            <li>• Monitor for viral disease symptoms</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600 transition-colors">
+                        Acknowledge Alert
+                    </button>
+                </div>
+            `);
+        }
+
+        // Initialize weather data fetching
+        function initializeWeatherData() {
+            // Fetch weather data every 30 minutes
+            setInterval(fetchWeatherData, 30 * 60 * 1000);
+        }
+
+        // Show modal
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">${title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                type === 'warning' ? 'bg-orange-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-triangle' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Global function for image removal
+        window.removeImage = function(index) {
+            const preview = document.getElementById('imagePreview');
+            const images = preview.children;
+            if (images[index]) {
+                images[index].remove();
+            }
+            
+            if (preview.children.length === 0) {
+                document.getElementById('uploadContent').classList.remove('hidden');
+                document.getElementById('uploadPreview').classList.add('hidden');
+            }
+        };
+
+        // Global function for treatment calculation
+        window.calculateTreatment = function() {
+            const farmSize = parseFloat(document.getElementById('farmSizeCalc').value) || 0;
+            const infestation = document.getElementById('infestationLevel').value;
+            const treatment = document.getElementById('treatmentType').value;
+            
+            if (farmSize <= 0) {
+                showNotification('Please enter a valid farm size', 'error');
+                return;
+            }
+            
+            const costMultipliers = {
+                organic: { low: 15, medium: 20, high: 25, severe: 30 },
+                chemical: { low: 35, medium: 45, high: 55, severe: 65 },
+                integrated: { low: 25, medium: 35, high: 45, severe: 55 }
+            };
+            
+            const cost = costMultipliers[treatment][infestation] * farmSize;
+            const applications = infestation === 'severe' ? 3 : infestation === 'high' ? 2 : 1;
+            
+            document.getElementById('treatmentResults').innerHTML = `
+                <h4 class="font-semibold mb-2">Treatment Plan Results</h4>
+                <div class="space-y-2 text-sm">
+                    <p><strong>Farm Size:</strong> ${farmSize} hectares</p>
+                    <p><strong>Infestation Level:</strong> ${infestation.charAt(0).toUpperCase() + infestation.slice(1)}</p>
+                    <p><strong>Treatment Type:</strong> ${treatment.charAt(0).toUpperCase() + treatment.slice(1)}</p>
+                    <p><strong>Estimated Cost:</strong> $${cost.toFixed(2)}</p>
+                    <p><strong>Applications Needed:</strong> ${applications}</p>
+                    <p><strong>Expected Efficacy:</strong> ${treatment === 'integrated' ? '90-95%' : treatment === 'chemical' ? '85-90%' : '75-85%'}</p>
+                </div>
+            `;
+            document.getElementById('treatmentResults').classList.remove('hidden');
+        };
+    </script>
+</body>
+</html>

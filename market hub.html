@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Hub - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        earth: '#a3a3a3',
+                        sky: '#0ea5e9',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .market-card {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .market-card:hover {
+            transform: translateY(-5px);
+            border-color: #22c55e;
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.2);
+        }
+        .price-up {
+            color: #22c55e;
+        }
+        .price-down {
+            color: #ef4444;
+        }
+        .price-neutral {
+            color: #6b7280;
+        }
+        .ticker-tape {
+            animation: scroll 30s linear infinite;
+        }
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .trading-interface {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        }
+        .market-stats {
+            background: linear-gradient(135deg, #fef3c7, #fbbf24);
+        }
+        .commodity-highlight {
+            background: linear-gradient(135deg, #dcfce7, #16a34a);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #22c55e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .pulse-dot {
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-50 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="#" class="block px-4 py-2 text-primary font-semibold hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="#" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">AI Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#trading" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Trading Platform</a>
+                            <a href="#price-alerts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Price Alerts</a>
+                            <a href="#market-analysis" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Analysis</a>
+                            <a href="#supply-chain" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Supply Chain</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <input type="text" id="siteSearch" placeholder="Search markets..." class="w-64 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="#" class="block text-primary font-semibold">Market Hub</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Live Market Ticker -->
+    <section class="bg-gray-900 text-white py-2 overflow-hidden">
+        <div class="ticker-tape flex space-x-8 whitespace-nowrap">
+            <div id="marketTicker" class="flex space-x-8">
+                <!-- Ticker items will be populated by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Header -->
+    <section class="climate-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-chart-line mr-3"></i>Agricultural Market Hub
+                </h1>
+                <p class="text-xl opacity-90 mb-6">Real-time commodity prices, trading platform, and market intelligence for farmers worldwide</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">150+</div>
+                        <div class="text-sm opacity-75">Commodities</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">50K+</div>
+                        <div class="text-sm opacity-75">Active Traders</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">Real-time</div>
+                        <div class="text-sm opacity-75">Market Data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Market Overview Dashboard -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">
+                        <i class="fas fa-globe text-primary mr-2"></i>Global Market Overview
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full pulse-dot"></div>
+                            <span class="text-sm text-gray-600 dark:text-gray-300">Live Data</span>
+                        </div>
+                        <select id="marketRegion" class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded text-sm">
+                            <option value="global">Global Markets</option>
+                            <option value="africa">African Markets</option>
+                            <option value="asia">Asian Markets</option>
+                            <option value="americas">Americas</option>
+                            <option value="europe">European Markets</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Market Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="market-stats p-4 rounded-lg text-center">
+                        <div class="text-lg font-bold text-amber-800 mb-1" id="marketIndex">+2.3%</div>
+                        <div class="text-sm text-amber-700">Market Index</div>
+                    </div>
+                    <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
+                        <div class="text-lg font-bold text-green-600 dark:text-green-400 mb-1" id="topGainer">Maize +5.2%</div>
+                        <div class="text-sm text-green-700 dark:text-green-300">Top Gainer</div>
+                    </div>
+                    <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-center">
+                        <div class="text-lg font-bold text-red-600 dark:text-red-400 mb-1" id="topLoser">Rice -2.8%</div>
+                        <div class="text-sm text-red-700 dark:text-red-300">Top Loser</div>
+                    </div>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
+                        <div class="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1" id="volumeTraded">$2.4M</div>
+                        <div class="text-sm text-blue-700 dark:text-blue-300">Volume Today</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="grid md:grid-cols-3 gap-6">
+                    <button id="quickBuy" class="bg-green-500 hover:bg-green-600 text-white p-6 rounded-xl transition-colors">
+                        <i class="fas fa-shopping-cart text-2xl mb-2"></i>
+                        <h3 class="text-lg font-semibold">Quick Buy</h3>
+                        <p class="text-sm opacity-90">Purchase agricultural products</p>
+                    </button>
+                    <button id="quickSell" class="bg-blue-500 hover:bg-blue-600 text-white p-6 rounded-xl transition-colors">
+                        <i class="fas fa-tag text-2xl mb-2"></i>
+                        <h3 class="text-lg font-semibold">Quick Sell</h3>
+                        <p class="text-sm opacity-90">List your products for sale</p>
+                    </button>
+                    <button id="priceAlerts" class="bg-purple-500 hover:bg-purple-600 text-white p-6 rounded-xl transition-colors">
+                        <i class="fas fa-bell text-2xl mb-2"></i>
+                        <h3 class="text-lg font-semibold">Price Alerts</h3>
+                        <p class="text-sm opacity-90">Set up price notifications</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Real-time Commodity Prices -->
+    <section class="py-8 bg-white dark:bg-gray-800">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-chart-bar text-primary mr-2"></i>Live Commodity Prices
+                </h2>
+                <div class="flex space-x-4">
+                    <select id="commodityCategory" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg">
+                        <option value="">All Categories</option>
+                        <option value="grains">Grains & Cereals</option>
+                        <option value="vegetables">Vegetables</option>
+                        <option value="fruits">Fruits</option>
+                        <option value="livestock">Livestock</option>
+                        <option value="dairy">Dairy Products</option>
+                    </select>
+                    <button id="refreshPrices" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition-colors">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full bg-white dark:bg-gray-700 rounded-xl shadow-lg">
+                    <thead class="bg-gray-50 dark:bg-gray-600">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Commodity</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Current Price</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Change</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">% Change</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Volume</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Market</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="commodityTable" class="divide-y divide-gray-200 dark:divide-gray-600">
+                        <!-- Table rows will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trading Platform -->
+    <section id="trading" class="py-8 bg-gray-50 dark:bg-gray-900">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+                <i class="fas fa-exchange-alt text-primary mr-2"></i>Trading Platform
+            </h2>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Buy/Sell Interface -->
+                <div class="lg:col-span-2">
+                    <div class="trading-interface rounded-xl p-6 mb-6">
+                        <div class="flex space-x-4 mb-6">
+                            <button id="buyTab" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold">
+                                <i class="fas fa-arrow-up mr-2"></i>Buy Orders
+                            </button>
+                            <button id="sellTab" class="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold">
+                                <i class="fas fa-arrow-down mr-2"></i>Sell Orders
+                            </button>
+                        </div>
+                        
+                        <!-- Buy Form -->
+                        <div id="buyForm" class="space-y-4">
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Commodity</label>
+                                    <select id="buyCommodity" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                        <option value="">Select commodity</option>
+                                        <option value="maize">Maize</option>
+                                        <option value="wheat">Wheat</option>
+                                        <option value="rice">Rice</option>
+                                        <option value="beans">Beans</option>
+                                        <option value="coffee">Coffee</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Quantity (tons)</label>
+                                    <input type="number" id="buyQuantity" placeholder="Enter quantity" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                </div>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Max Price ($/ton)</label>
+                                    <input type="number" id="buyPrice" placeholder="Maximum price willing to pay" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Delivery Location</label>
+                                    <select id="buyLocation" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                        <option value="">Select location</option>
+                                        <option value="nairobi">Nairobi, Kenya</option>
+                                        <option value="lagos">Lagos, Nigeria</option>
+                                        <option value="accra">Accra, Ghana</option>
+                                        <option value="kampala">Kampala, Uganda</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="submitBuyOrder" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition-colors font-semibold">
+                                <i class="fas fa-shopping-cart mr-2"></i>Place Buy Order
+                            </button>
+                        </div>
+
+                        <!-- Sell Form (initially hidden) -->
+                        <div id="sellForm" class="space-y-4 hidden">
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Commodity</label>
+                                    <select id="sellCommodity" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                        <option value="">Select commodity</option>
+                                        <option value="maize">Maize</option>
+                                        <option value="wheat">Wheat</option>
+                                        <option value="rice">Rice</option>
+                                        <option value="beans">Beans</option>
+                                        <option value="coffee">Coffee</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Available Quantity (tons)</label>
+                                    <input type="number" id="sellQuantity" placeholder="Quantity available" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                </div>
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Asking Price ($/ton)</label>
+                                    <input type="number" id="sellPrice" placeholder="Your asking price" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Origin Location</label>
+                                    <select id="sellLocation" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white text-base">
+                                        <option value="">Select location</option>
+                                        <option value="nairobi">Nairobi, Kenya</option>
+                                        <option value="lagos">Lagos, Nigeria</option>
+                                        <option value="accra">Accra, Ghana</option>
+                                        <option value="kampala">Kampala, Uganda</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Product Description</label>
+                                <textarea id="sellDescription" rows="3" placeholder="Describe your product quality, certifications, etc." class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white"></textarea>
+                            </div>
+                            <button id="submitSellOrder" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold">
+                                <i class="fas fa-tag mr-2"></i>Place Sell Order
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Sidebar -->
+                <div class="space-y-6">
+                    <!-- Active Orders -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-list text-primary mr-2"></i>Your Active Orders
+                        </h3>
+                        <div id="activeOrders" class="space-y-3">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                                No active orders. Place your first order to get started!
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market News -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-newspaper text-primary mr-2"></i>Market News
+                        </h3>
+                        <div id="marketNews" class="space-y-3">
+                            <!-- News items will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Price Alerts -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-bell text-primary mr-2"></i>Set Price Alert
+                        </h3>
+                        <div class="space-y-3">
+                            <select id="alertCommodity" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                <option value="">Select commodity</option>
+                                <option value="maize">Maize</option>
+                                <option value="wheat">Wheat</option>
+                                <option value="rice">Rice</option>
+                                <option value="beans">Beans</option>
+                            </select>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="alertPrice" placeholder="Target price" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                <select id="alertType" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white">
+                                    <option value="above">Above</option>
+                                    <option value="below">Below</option>
+                                </select>
+                            </div>
+                            <button id="setAlert" class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                                Set Alert
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Market Analytics -->
+    <section id="market-analysis" class="py-8 bg-white dark:bg-gray-800">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+                <i class="fas fa-chart-area text-primary mr-2"></i>Market Analytics & Insights
+            </h2>
+            
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- Price Trends Chart -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">Price Trends (30 Days)</h3>
+                        <select id="trendCommodity" class="px-3 py-1 bg-white dark:bg-gray-600 text-gray-800 dark:text-white rounded text-sm">
+                            <option value="maize">Maize</option>
+                            <option value="wheat">Wheat</option>
+                            <option value="rice">Rice</option>
+                            <option value="beans">Beans</option>
+                        </select>
+                    </div>
+                    <canvas id="priceChart" class="w-full h-64"></canvas>
+                </div>
+                
+                <!-- Volume Analysis -->
+                <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">Trading Volume Analysis</h3>
+                    <canvas id="volumeChart" class="w-full h-64"></canvas>
+                </div>
+            </div>
+            
+            <!-- Regional Market Comparison -->
+            <div class="mt-8 bg-gray-50 dark:bg-gray-700 rounded-xl p-6">
+                <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-6">Regional Price Comparison</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-300 dark:border-gray-600">
+                                <th class="text-left py-2 text-gray-700 dark:text-gray-300">Region</th>
+                                <th class="text-left py-2 text-gray-700 dark:text-gray-300">Maize ($/ton)</th>
+                                <th class="text-left py-2 text-gray-700 dark:text-gray-300">Wheat ($/ton)</th>
+                                <th class="text-left py-2 text-gray-700 dark:text-gray-300">Rice ($/ton)</th>
+                                <th class="text-left py-2 text-gray-700 dark:text-gray-300">Beans ($/ton)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regionalPrices" class="text-sm">
+                            <!-- Regional price data will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Marketplace Listings -->
+    <section class="py-8 bg-gray-50 dark:bg-gray-900">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">
+                    <i class="fas fa-store text-primary mr-2"></i>Active Marketplace
+                </h2>
+                <div class="flex space-x-4">
+                    <select id="listingFilter" class="px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg">
+                        <option value="all">All Listings</option>
+                        <option value="buy">Buy Orders</option>
+                        <option value="sell">Sell Orders</option>
+                    </select>
+                    <select id="locationFilter" class="px-4 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg">
+                        <option value="all">All Locations</option>
+                        <option value="nairobi">Nairobi</option>
+                        <option value="lagos">Lagos</option>
+                        <option value="accra">Accra</option>
+                        <option value="kampala">Kampala</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="marketplaceListings" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Marketplace listings will be populated here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered climate-smart solutions and real-time market intelligence for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">API Documentation</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Support Center</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-TECH</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Cookie Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Data Protection</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Market data configuration and APIs
+        const MARKET_CONFIG = {
+            // Alpha Vantage API for commodity data (replace with your API key)
+            ALPHA_VANTAGE_KEY: 'demo',
+            ALPHA_VANTAGE_URL: 'https://www.alphavantage.co/query',
+            
+            // World Bank Commodity Price Data
+            WORLD_BANK_URL: 'https://api.worldbank.org/v2/country/WLD/indicator/PMAIZMTUSDM',
+            
+            // Mock API endpoints for demo purposes
+            DEMO_API_BASE: 'https://api.example.com/v1',
+            
+            // Update intervals
+            PRICE_UPDATE_INTERVAL: 30000, // 30 seconds
+            TICKER_UPDATE_INTERVAL: 5000   // 5 seconds
+        };
+
+        // Global market data storage
+        let marketData = {
+            commodities: [],
+            tickers: [],
+            orders: [],
+            alerts: [],
+            news: []
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializeMarketData();
+            setupEventListeners();
+            startMarketUpdates();
+            generateCharts();
+            loadMarketNews();
+            loadMarketplaceListings();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize market data
+        function initializeMarketData() {
+            // Initialize with demo data
+            marketData.commodities = [
+                {
+                    id: 1,
+                    name: 'Maize',
+                    symbol: 'CORN',
+                    category: 'grains',
+                    currentPrice: 245.50,
+                    previousPrice: 238.20,
+                    volume: 15420,
+                    market: 'CBOT',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 2,
+                    name: 'Wheat',
+                    symbol: 'WHEAT',
+                    category: 'grains',
+                    currentPrice: 312.75,
+                    previousPrice: 320.10,
+                    volume: 12850,
+                    market: 'CBOT',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 3,
+                    name: 'Rice',
+                    symbol: 'RICE',
+                    category: 'grains',
+                    currentPrice: 425.30,
+                    previousPrice: 437.80,
+                    volume: 8960,
+                    market: 'CBOT',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 4,
+                    name: 'Soybeans',
+                    symbol: 'SOYB',
+                    category: 'grains',
+                    currentPrice: 520.45,
+                    previousPrice: 515.20,
+                    volume: 18750,
+                    market: 'CBOT',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 5,
+                    name: 'Coffee',
+                    symbol: 'COFFEE',
+                    category: 'beverages',
+                    currentPrice: 1850.60,
+                    previousPrice: 1820.30,
+                    volume: 5420,
+                    market: 'ICE',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 6,
+                    name: 'Sugar',
+                    symbol: 'SUGAR',
+                    category: 'sweeteners',
+                    currentPrice: 485.20,
+                    previousPrice: 478.90,
+                    volume: 9630,
+                    market: 'ICE',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 7,
+                    name: 'Cocoa',
+                    symbol: 'COCOA',
+                    category: 'beverages',
+                    currentPrice: 3250.80,
+                    previousPrice: 3180.45,
+                    volume: 3210,
+                    market: 'ICE',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                },
+                {
+                    id: 8,
+                    name: 'Cotton',
+                    symbol: 'COTTON',
+                    category: 'textiles',
+                    currentPrice: 1620.35,
+                    previousPrice: 1635.70,
+                    volume: 7480,
+                    market: 'ICE',
+                    unit: '$/ton',
+                    lastUpdated: new Date()
+                }
+            ];
+            
+            updateCommodityTable();
+            updateMarketTicker();
+            updateMarketOverview();
+        }
+
+        // Fetch real-time market data
+        async function fetchRealTimeMarketData() {
+            try {
+                // Try to fetch from multiple sources
+                await Promise.allSettled([
+                    fetchAlphaVantageData(),
+                    fetchWorldBankData(),
+                    fetchLocalMarketData()
+                ]);
+                
+                updateCommodityTable();
+                updateMarketTicker();
+                updateMarketOverview();
+                
+            } catch (error) {
+                console.error('Error fetching market data:', error);
+                // Continue with demo data
+                simulateMarketMovement();
+            }
+        }
+
+        // Fetch from Alpha Vantage API
+        async function fetchAlphaVantageData() {
+            if (MARKET_CONFIG.ALPHA_VANTAGE_KEY === 'demo') {
+                throw new Error('Demo mode - using simulated data');
+            }
+            
+            const symbols = ['CORN', 'WHEAT', 'RICE', 'SOYB'];
+            
+            for (const symbol of symbols) {
+                try {
+                    const response = await fetch(
+                        `${MARKET_CONFIG.ALPHA_VANTAGE_URL}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${MARKET_CONFIG.ALPHA_VANTAGE_KEY}`
+                    );
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateCommodityFromAPI(symbol, data);
+                    }
+                } catch (error) {
+                    console.error(`Error fetching ${symbol}:`, error);
+                }
+            }
+        }
+
+        // Fetch from World Bank API
+        async function fetchWorldBankData() {
+            try {
+                const response = await fetch(
+                    `${MARKET_CONFIG.WORLD_BANK_URL}?format=json&date=2020:2024&per_page=100`
+                );
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Process World Bank data
+                    if (data && data[1]) {
+                        const latestData = data[1][0];
+                        if (latestData && latestData.value) {
+                            updateCommodityPrice('CORN', latestData.value);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching World Bank data:', error);
+            }
+        }
+
+        // Fetch local market data (mock)
+        async function fetchLocalMarketData() {
+            // This would connect to local/regional market APIs
+            // For demo purposes, we'll simulate this
+            const localMarkets = [
+                { name: 'Nairobi Agricultural Exchange', region: 'East Africa' },
+                { name: 'Lagos Commodity Exchange', region: 'West Africa' },
+                { name: 'Johannesburg Agricultural Market', region: 'Southern Africa' }
+            ];
+            
+            // Simulate local market price variations
+            marketData.commodities.forEach(commodity => {
+                const localVariation = (Math.random() - 0.5) * 0.1; // ±5% variation
+                commodity.localPrices = localMarkets.map(market => ({
+                    market: market.name,
+                    price: commodity.currentPrice * (1 + localVariation),
+                    currency: 'USD'
+                }));
+            });
+        }
+
+        // Update commodity from API data
+        function updateCommodityFromAPI(symbol, apiData) {
+            const commodity = marketData.commodities.find(c => c.symbol === symbol);
+            if (commodity && apiData['Global Quote']) {
+                const quote = apiData['Global Quote'];
+                commodity.previousPrice = commodity.currentPrice;
+                commodity.currentPrice = parseFloat(quote['05. price']);
+                commodity.volume = parseInt(quote['06. volume']);
+                commodity.lastUpdated = new Date();
+            }
+        }
+
+        // Update specific commodity price
+        function updateCommodityPrice(symbol, newPrice) {
+            const commodity = marketData.commodities.find(c => c.symbol === symbol);
+            if (commodity) {
+                commodity.previousPrice = commodity.currentPrice;
+                commodity.currentPrice = newPrice;
+                commodity.lastUpdated = new Date();
+            }
+        }
+
+        // Simulate market movement for demo
+        function simulateMarketMovement() {
+            marketData.commodities.forEach(commodity => {
+                commodity.previousPrice = commodity.currentPrice;
+                
+                // Simulate realistic price movement (±3%)
+                const changePercent = (Math.random() - 0.5) * 0.06;
+                commodity.currentPrice = Math.round((commodity.currentPrice * (1 + changePercent)) * 100) / 100;
+                
+                // Simulate volume changes
+                commodity.volume = Math.floor(commodity.volume * (0.8 + Math.random() * 0.4));
+                commodity.lastUpdated = new Date();
+            });
+        }
+
+        // Update commodity table
+        function updateCommodityTable() {
+            const tbody = document.getElementById('commodityTable');
+            tbody.innerHTML = '';
+            
+            marketData.commodities.forEach(commodity => {
+                const change = commodity.currentPrice - commodity.previousPrice;
+                const changePercent = (change / commodity.previousPrice) * 100;
+                const isPositive = change >= 0;
+                
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-600';
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center mr-3">
+                                <span class="text-white text-xs font-bold">${commodity.symbol.substring(0, 2)}</span>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-gray-800 dark:text-white">${commodity.name}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${commodity.symbol}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 font-semibold text-gray-800 dark:text-white">
+                        $${commodity.currentPrice.toFixed(2)}
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="${isPositive ? 'price-up' : 'price-down'}">
+                            ${isPositive ? '+' : ''}$${change.toFixed(2)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="flex items-center ${isPositive ? 'price-up' : 'price-down'}">
+                            <i class="fas fa-arrow-${isPositive ? 'up' : 'down'} mr-1"></i>
+                            ${changePercent.toFixed(2)}%
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 dark:text-gray-300">
+                        ${commodity.volume.toLocaleString()}
+                    </td>
+                    <td class="px-6 py-4 text-gray-600 dark:text-gray-300">
+                        ${commodity.market}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex space-x-2">
+                            <button onclick="quickTrade('${commodity.symbol}', 'buy')" class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors">
+                                Buy
+                            </button>
+                            <button onclick="quickTrade('${commodity.symbol}', 'sell')" class="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors">
+                                Sell
+                            </button>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update market ticker
+        function updateMarketTicker() {
+            const ticker = document.getElementById('marketTicker');
+            ticker.innerHTML = '';
+            
+            marketData.commodities.forEach(commodity => {
+                const change = commodity.currentPrice - commodity.previousPrice;
+                const changePercent = (change / commodity.previousPrice) * 100;
+                const isPositive = change >= 0;
+                
+                const tickerItem = document.createElement('div');
+                tickerItem.className = 'flex items-center space-x-2 text-sm';
+                tickerItem.innerHTML = `
+                    <span class="font-semibold">${commodity.symbol}</span>
+                    <span>$${commodity.currentPrice.toFixed(2)}</span>
+                    <span class="${isPositive ? 'text-green-400' : 'text-red-400'}">
+                        ${isPositive ? '+' : ''}${changePercent.toFixed(1)}%
+                    </span>
+                `;
+                
+                ticker.appendChild(tickerItem);
+            });
+        }
+
+        // Update market overview
+        function updateMarketOverview() {
+            // Calculate market index (average change)
+            const totalChange = marketData.commodities.reduce((sum, commodity) => {
+                const change = (commodity.currentPrice - commodity.previousPrice) / commodity.previousPrice;
+                return sum + change;
+            }, 0);
+            const marketIndex = (totalChange / marketData.commodities.length) * 100;
+            
+            document.getElementById('marketIndex').textContent = `${marketIndex >= 0 ? '+' : ''}${marketIndex.toFixed(1)}%`;
+            document.getElementById('marketIndex').className = `text-lg font-bold mb-1 ${marketIndex >= 0 ? 'text-green-600' : 'text-red-600'}`;
+            
+            // Find top gainer and loser
+            const sorted = [...marketData.commodities].sort((a, b) => {
+                const changeA = (a.currentPrice - a.previousPrice) / a.previousPrice;
+                const changeB = (b.currentPrice - b.previousPrice) / b.previousPrice;
+                return changeB - changeA;
+            });
+            
+            const topGainer = sorted[0];
+            const topLoser = sorted[sorted.length - 1];
+            
+            const gainerChange = ((topGainer.currentPrice - topGainer.previousPrice) / topGainer.previousPrice) * 100;
+            const loserChange = ((topLoser.currentPrice - topLoser.previousPrice) / topLoser.previousPrice) * 100;
+            
+            document.getElementById('topGainer').textContent = `${topGainer.name} +${gainerChange.toFixed(1)}%`;
+            document.getElementById('topLoser').textContent = `${topLoser.name} ${loserChange.toFixed(1)}%`;
+            
+            // Calculate total volume
+            const totalVolume = marketData.commodities.reduce((sum, commodity) => sum + commodity.volume, 0);
+            document.getElementById('volumeTraded').textContent = `$${(totalVolume / 1000).toFixed(1)}K`;
+        }
+
+        // Quick trade function
+        function quickTrade(symbol, action) {
+            const commodity = marketData.commodities.find(c => c.symbol === symbol);
+            if (!commodity) return;
+            
+            // Pre-fill the trading form
+            if (action === 'buy') {
+                document.getElementById('buyTab').click();
+                document.getElementById('buyCommodity').value = symbol.toLowerCase();
+                document.getElementById('buyPrice').value = commodity.currentPrice;
+            } else {
+                document.getElementById('sellTab').click();
+                document.getElementById('sellCommodity').value = symbol.toLowerCase();
+                document.getElementById('sellPrice').value = commodity.currentPrice;
+            }
+            
+            // Scroll to trading section
+            document.getElementById('trading').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Generate market charts
+        function generateCharts() {
+            generatePriceChart();
+            generateVolumeChart();
+            updateRegionalPrices();
+        }
+
+        // Generate price trend chart
+        function generatePriceChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            // Generate sample historical data
+            const dates = [];
+            const maizeData = [];
+            const wheatData = [];
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                dates.push(date.toLocaleDateString('en', { month: 'short', day: 'numeric' }));
+                
+                // Simulate price history
+                maizeData.push(240 + Math.random() * 20 + Math.sin(i / 5) * 10);
+                wheatData.push(310 + Math.random() * 25 + Math.cos(i / 4) * 15);
+            }
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Maize ($/ton)',
+                        data: maizeData,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.4,
+                        fill: false
+                    }, {
+                        label: 'Wheat ($/ton)',
+                        data: wheatData,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.3)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generate volume chart
+        function generateVolumeChart() {
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+            
+            const commodities = ['Maize', 'Wheat', 'Rice', 'Soybeans', 'Coffee'];
+            const volumes = marketData.commodities.slice(0, 5).map(c => c.volume);
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: commodities,
+                    datasets: [{
+                        data: volumes,
+                        backgroundColor: [
+                            '#22c55e',
+                            '#f59e0b',
+                            '#3b82f6',
+                            '#ef4444',
+                            '#8b5cf6'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update regional prices
+        function updateRegionalPrices() {
+            const tbody = document.getElementById('regionalPrices');
+            const regions = [
+                { name: 'East Africa', maize: 245, wheat: 315, rice: 425, beans: 180 },
+                { name: 'West Africa', maize: 260, wheat: 330, rice: 440, beans: 195 },
+                { name: 'Southern Africa', maize: 235, wheat: 295, rice: 410, beans: 175 },
+                { name: 'North Africa', maize: 255, wheat: 320, rice: 435, beans: 185 }
+            ];
+            
+            tbody.innerHTML = '';
+            
+            regions.forEach(region => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200 dark:border-gray-600';
+                row.innerHTML = `
+                    <td class="py-2 font-medium text-gray-800 dark:text-white">${region.name}</td>
+                    <td class="py-2 text-gray-600 dark:text-gray-300">$${region.maize}</td>
+                    <td class="py-2 text-gray-600 dark:text-gray-300">$${region.wheat}</td>
+                    <td class="py-2 text-gray-600 dark:text-gray-300">$${region.rice}</td>
+                    <td class="py-2 text-gray-600 dark:text-gray-300">$${region.beans}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Load market news
+        function loadMarketNews() {
+            const newsContainer = document.getElementById('marketNews');
+            const news = [
+                {
+                    title: 'Maize Prices Surge on Supply Concerns',
+                    time: '2 hours ago',
+                    summary: 'Global maize prices increased 5.2% following drought concerns in major producing regions.'
+                },
+                {
+                    title: 'Coffee Market Shows Strong Demand',
+                    time: '4 hours ago',
+                    summary: 'Premium coffee varieties see increased demand from international markets.'
+                },
+                {
+                    title: 'New Trade Agreement Boosts Exports',
+                    time: '6 hours ago',
+                    summary: 'Regional trade agreement expected to increase agricultural exports by 15%.'
+                }
+            ];
+            
+            newsContainer.innerHTML = '';
+            
+            news.forEach(article => {
+                const newsItem = document.createElement('div');
+                newsItem.className = 'border-b border-gray-200 dark:border-gray-600 pb-3 last:border-b-0';
+                newsItem.innerHTML = `
+                    <h4 class="font-medium text-gray-800 dark:text-white text-sm mb-1">${article.title}</h4>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">${article.time}</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-300">${article.summary}</p>
+                `;
+                newsContainer.appendChild(newsItem);
+            });
+        }
+
+        // Load marketplace listings
+        function loadMarketplaceListings() {
+            const container = document.getElementById('marketplaceListings');
+            const listings = [
+                {
+                    id: 1,
+                    type: 'sell',
+                    commodity: 'Maize',
+                    quantity: 50,
+                    price: 245,
+                    location: 'Nairobi, Kenya',
+                    seller: 'John Farmers Co-op',
+                    quality: 'Grade A',
+                    timePosted: '2 hours ago'
+                },
+                {
+                    id: 2,
+                    type: 'buy',
+                    commodity: 'Wheat',
+                    quantity: 100,
+                    price: 315,
+                    location: 'Lagos, Nigeria',
+                    buyer: 'West African Mills',
+                    quality: 'Premium Grade',
+                    timePosted: '4 hours ago'
+                },
+                {
+                    id: 3,
+                    type: 'sell',
+                    commodity: 'Coffee',
+                    quantity: 25,
+                    price: 1850,
+                    location: 'Kampala, Uganda',
+                    seller: 'Highland Coffee Farms',
+                    quality: 'Arabica Premium',
+                    timePosted: '1 day ago'
+                },
+                {
+                    id: 4,
+                    type: 'buy',
+                    commodity: 'Rice',
+                    quantity: 75,
+                    price: 425,
+                    location: 'Accra, Ghana',
+                    buyer: 'Gold Coast Traders',
+                    quality: 'Long Grain',
+                    timePosted: '1 day ago'
+                },
+                {
+                    id: 5,
+                    type: 'sell',
+                    commodity: 'Soybeans',
+                    quantity: 80,
+                    price: 520,
+                    location: 'Nairobi, Kenya',
+                    seller: 'East Africa Soybeans Ltd',
+                    quality: 'Organic Certified',
+                    timePosted: '2 days ago'
+                },
+                {
+                    id: 6,
+                    type: 'buy',
+                    commodity: 'Sugar',
+                    quantity: 120,
+                    price: 485,
+                    location: 'Lagos, Nigeria',
+                    buyer: 'Sweet Solutions Inc',
+                    quality: 'Refined White',
+                    timePosted: '3 days ago'
+                }
+            ];
+            
+            container.innerHTML = '';
+            
+            listings.forEach(listing => {
+                const listingCard = document.createElement('div');
+                listingCard.className = 'market-card bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg';
+                
+                listingCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="px-3 py-1 text-xs font-semibold rounded-full ${
+                            listing.type === 'buy' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 
+                            'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                        }">
+                            ${listing.type.toUpperCase()} ORDER
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">${listing.timePosted}</span>
+                    </div>
+                    
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">${listing.commodity}</h3>
+                    
+                    <div class="space-y-2 text-sm text-gray-600 dark:text-gray-300 mb-4">
+                        <div class="flex justify-between">
+                            <span>Quantity:</span>
+                            <span class="font-semibold">${listing.quantity} tons</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Price:</span>
+                            <span class="font-semibold text-primary">$${listing.price}/ton</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Quality:</span>
+                            <span class="font-semibold">${listing.quality}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Location:</span>
+                            <span class="font-semibold">${listing.location}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>${listing.type === 'buy' ? 'Buyer' : 'Seller'}:</span>
+                            <span class="font-semibold">${listing.type === 'buy' ? listing.buyer : listing.seller}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="contactTrader(${listing.id})" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-secondary transition-colors text-sm">
+                            <i class="fas fa-envelope mr-1"></i> Contact
+                        </button>
+                        <button onclick="viewDetails(${listing.id})" class="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm">
+                            <i class="fas fa-info-circle mr-1"></i> Details
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(listingCard);
+            });
+        }
+
+        // Contact trader function
+        function contactTrader(listingId) {
+            showModal('Contact Trader', `
+                <div class="space-y-4">
+                    <p class="text-gray-600 dark:text-gray-300">Send a message to the trader for listing #${listingId}</p>
+                    <textarea rows="4" placeholder="Type your message here..." class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:border-primary dark:bg-gray-700 dark:text-white"></textarea>
+                    <div class="flex space-x-3">
+                        <button class="flex-1 bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                            Send Message
+                        </button>
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `);
+        }
+
+        // View details function
+        function viewDetails(listingId) {
+            showModal('Listing Details', `
+                <div class="space-y-4">
+                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">Listing #${listingId}</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <strong>Payment Terms:</strong> 30 days net
+                            </div>
+                            <div>
+                                <strong>Delivery:</strong> FOB origin
+                            </div>
+                            <div>
+                                <strong>Certification:</strong> Organic, Fair Trade
+                            </div>
+                            <div>
+                                <strong>Harvest Date:</strong> Nov 2024
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <strong>Additional Notes:</strong>
+                            <p class="text-gray-600 dark:text-gray-300 mt-1">
+                                High-quality produce from certified organic farms. Moisture content below 14%. 
+                                Available for immediate delivery. Bulk discounts available for orders over 100 tons.
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="this.closest('.fixed').remove()" class="w-full bg-primary text-white py-2 rounded hover:bg-secondary transition-colors">
+                        Close
+                    </button>
+                </div>
+            `);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Trading tabs
+            document.getElementById('buyTab').addEventListener('click', function() {
+                this.className = 'flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold';
+                document.getElementById('sellTab').className = 'flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold';
+                document.getElementById('buyForm').classList.remove('hidden');
+                document.getElementById('sellForm').classList.add('hidden');
+            });
+
+            document.getElementById('sellTab').addEventListener('click', function() {
+                this.className = 'flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold';
+                document.getElementById('buyTab').className = 'flex-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-semibold';
+                document.getElementById('sellForm').classList.remove('hidden');
+                document.getElementById('buyForm').classList.add('hidden');
+            });
+
+            // Order submissions
+            document.getElementById('submitBuyOrder').addEventListener('click', submitBuyOrder);
+            document.getElementById('submitSellOrder').addEventListener('click', submitSellOrder);
+
+            // Price alerts
+            document.getElementById('setAlert').addEventListener('click', setPriceAlert);
+
+            // Quick actions
+            document.getElementById('quickBuy').addEventListener('click', () => {
+                document.getElementById('buyTab').click();
+                document.getElementById('trading').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            document.getElementById('quickSell').addEventListener('click', () => {
+                document.getElementById('sellTab').click();
+                document.getElementById('trading').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            document.getElementById('priceAlerts').addEventListener('click', () => {
+                document.getElementById('alertCommodity').focus();
+            });
+
+            // Refresh prices
+            document.getElementById('refreshPrices').addEventListener('click', () => {
+                simulateMarketMovement();
+                updateCommodityTable();
+                updateMarketTicker();
+                updateMarketOverview();
+                showNotification('Market data refreshed successfully!', 'success');
+            });
+
+            // Filters
+            document.getElementById('commodityCategory').addEventListener('change', filterCommodities);
+            document.getElementById('marketRegion').addEventListener('change', filterByRegion);
+        }
+
+        // Submit buy order
+        function submitBuyOrder() {
+            const commodity = document.getElementById('buyCommodity').value;
+            const quantity = document.getElementById('buyQuantity').value;
+            const price = document.getElementById('buyPrice').value;
+            const location = document.getElementById('buyLocation').value;
+
+            if (!commodity || !quantity || !price || !location) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const order = {
+                id: Date.now(),
+                type: 'buy',
+                commodity,
+                quantity: parseFloat(quantity),
+                price: parseFloat(price),
+                location,
+                status: 'active',
+                timestamp: new Date()
+            };
+
+            marketData.orders.push(order);
+            updateActiveOrders();
+            clearBuyForm();
+            showNotification('Buy order placed successfully!', 'success');
+        }
+
+        // Submit sell order
+        function submitSellOrder() {
+            const commodity = document.getElementById('sellCommodity').value;
+            const quantity = document.getElementById('sellQuantity').value;
+            const price = document.getElementById('sellPrice').value;
+            const location = document.getElementById('sellLocation').value;
+            const description = document.getElementById('sellDescription').value;
+
+            if (!commodity || !quantity || !price || !location) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const order = {
+                id: Date.now(),
+                type: 'sell',
+                commodity,
+                quantity: parseFloat(quantity),
+                price: parseFloat(price),
+                location,
+                description,
+                status: 'active',
+                timestamp: new Date()
+            };
+
+            marketData.orders.push(order);
+            updateActiveOrders();
+            clearSellForm();
+            showNotification('Sell order placed successfully!', 'success');
+        }
+
+        // Set price alert
+        function setPriceAlert() {
+            const commodity = document.getElementById('alertCommodity').value;
+            const price = document.getElementById('alertPrice').value;
+            const type = document.getElementById('alertType').value;
+
+            if (!commodity || !price) {
+                showNotification('Please select commodity and enter target price', 'error');
+                return;
+            }
+
+            const alert = {
+                id: Date.now(),
+                commodity,
+                targetPrice: parseFloat(price),
+                type,
+                active: true,
+                timestamp: new Date()
+            };
+
+            marketData.alerts.push(alert);
+            
+            // Clear form
+            document.getElementById('alertCommodity').value = '';
+            document.getElementById('alertPrice').value = '';
+            
+            showNotification(`Price alert set for ${commodity} ${type} $${price}`, 'success');
+        }
+
+        // Update active orders display
+        function updateActiveOrders() {
+            const container = document.getElementById('activeOrders');
+            
+            if (marketData.orders.length === 0) {
+                container.innerHTML = `
+                    <div class="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                        No active orders. Place your first order to get started!
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            marketData.orders.slice(-3).forEach(order => {
+                const orderDiv = document.createElement('div');
+                orderDiv.className = 'bg-gray-50 dark:bg-gray-600 p-3 rounded-lg';
+                orderDiv.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-xs font-semibold text-${order.type === 'buy' ? 'green' : 'blue'}-600 dark:text-${order.type === 'buy' ? 'green' : 'blue'}-400">
+                            ${order.type.toUpperCase()}
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">${order.status}</span>
+                    </div>
+                    <div class="text-sm font-medium text-gray-800 dark:text-white">${order.commodity}</div>
+                    <div class="text-xs text-gray-600 dark:text-gray-300">
+                        ${order.quantity} tons @ $${order.price}
+                    </div>
+                `;
+                container.appendChild(orderDiv);
+            });
+        }
+
+        // Clear form functions
+        function clearBuyForm() {
+            document.getElementById('buyCommodity').value = '';
+            document.getElementById('buyQuantity').value = '';
+            document.getElementById('buyPrice').value = '';
+            document.getElementById('buyLocation').value = '';
+        }
+
+        function clearSellForm() {
+            document.getElementById('sellCommodity').value = '';
+            document.getElementById('sellQuantity').value = '';
+            document.getElementById('sellPrice').value = '';
+            document.getElementById('sellLocation').value = '';
+            document.getElementById('sellDescription').value = '';
+        }
+
+        // Filter functions
+        function filterCommodities() {
+            const category = document.getElementById('commodityCategory').value;
+            // Implementation for filtering commodities by category
+            // This would filter the commodity table based on selected category
+        }
+
+        function filterByRegion() {
+            const region = document.getElementById('marketRegion').value;
+            // Implementation for filtering by region
+            // This would update the display to show region-specific data
+        }
+
+        // Start market updates
+        function startMarketUpdates() {
+            // Update prices periodically
+            setInterval(() => {
+                fetchRealTimeMarketData();
+            }, MARKET_CONFIG.PRICE_UPDATE_INTERVAL);
+
+            // Update ticker more frequently
+            setInterval(() => {
+                updateMarketTicker();
+            }, MARKET_CONFIG.TICKER_UPDATE_INTERVAL);
+        }
+
+        // Show modal dialog
+        function showModal(title, content) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+                    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h2 class="text-xl font-bold text-gray-800 dark:text-white">${title}</h2>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        ${content}
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info'}-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+
+        // Global functions for onclick handlers
+        window.quickTrade = quickTrade;
+        window.contactTrader = contactTrader;
+        window.viewDetails = viewDetails;
+    </script>
+</body>
+</html>

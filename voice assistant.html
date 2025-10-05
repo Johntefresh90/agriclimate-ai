@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Assistant - Agriclimate Connect</title>
+    <link href="https://cdn.tailwindcss.com/3.4.0" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22c55e',
+                        secondary: '#15803d',
+                        accent: '#84cc16',
+                        earth: '#a3a3a3',
+                        sky: '#0ea5e9',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        voice: '#8b5cf6',
+                        'voice-dark': '#7c3aed'
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .climate-gradient {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 50%, #84cc16 100%);
+        }
+        .voice-gradient {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+        }
+        .voice-pulse {
+            animation: voicePulse 2s infinite;
+        }
+        @keyframes voicePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .listening-animation {
+            animation: listening 1.5s ease-in-out infinite;
+        }
+        @keyframes listening {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .speaking-animation {
+            animation: speaking 0.8s ease-in-out infinite;
+        }
+        @keyframes speaking {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .waveform {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+        }
+        .wave-bar {
+            width: 4px;
+            margin: 0 2px;
+            background: linear-gradient(to top, #8b5cf6, #7c3aed);
+            border-radius: 2px;
+            animation: wave 1.2s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(1) { animation-delay: 0s; }
+        .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(5) { animation-delay: 0.4s; }
+        @keyframes wave {
+            0%, 100% { height: 10px; }
+            50% { height: 40px; }
+        }
+        .voice-ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        .voice-ripple::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: ripple 2s infinite;
+        }
+        @keyframes ripple {
+            0% { width: 0; height: 0; opacity: 1; }
+            100% { width: 300px; height: 300px; opacity: 0; }
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+        }
+        .typing-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            background-color: #8b5cf6;
+            display: inline-block;
+            margin-right: 4px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        .language-flag {
+            width: 24px;
+            height: 18px;
+            display: inline-block;
+            background-size: cover;
+            border-radius: 2px;
+            margin-right: 8px;
+        }
+        .chat-bubble {
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .voice-status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border-radius: 8px;
+            padding: 10px 0;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .mobile-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-menu.active {
+            transform: translateX(0);
+        }
+        .voice-command-hint {
+            animation: fadeInOut 3s infinite;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="font-sans bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Voice Status Indicator -->
+    <div id="voiceStatusIndicator" class="voice-status-indicator hidden">
+        <div class="bg-voice text-white px-4 py-2 rounded-full shadow-lg flex items-center space-x-2">
+            <div id="statusIcon" class="w-3 h-3 bg-white rounded-full"></div>
+            <span id="statusText">Ready</span>
+        </div>
+    </div>
+
+    <!-- Navigation Header -->
+    <nav class="bg-white dark:bg-gray-800 shadow-lg sticky top-0 z-40 transition-colors duration-300">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                        <i class="fas fa-seedling text-white text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-bold text-gray-800 dark:text-white">Agriclimate Connect</span>
+                </div>
+
+                <!-- Desktop Navigation -->
+                <div class="hidden lg:flex items-center space-x-8">
+                    <a href="index.html" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    
+                    <!-- Features Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Features <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="weather.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Crop Advisory</a>
+                            <a href="livestock.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Market Hub</a>
+                            <a href="ai-assistant.html" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">AI Assistant</a>
+                            <a href="#" class="block px-4 py-2 text-voice font-semibold hover:bg-voice hover:text-white">Voice Assistant</a>
+                        </div>
+                    </div>
+
+                    <!-- Services Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Services <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#voice-commands" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Voice Commands</a>
+                            <a href="#language-settings" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Language Settings</a>
+                            <a href="#voice-training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Voice Training</a>
+                            <a href="#accessibility" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Accessibility</a>
+                        </div>
+                    </div>
+
+                    <!-- Community Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Community <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#forum" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Discussion Forum</a>
+                            <a href="#experts" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Ask Experts</a>
+                            <a href="#success-stories" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Success Stories</a>
+                            <a href="#mentorship" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Mentorship</a>
+                        </div>
+                    </div>
+
+                    <!-- Resources Dropdown -->
+                    <div class="dropdown relative">
+                        <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors flex items-center">
+                            Resources <i class="fas fa-chevron-down ml-1"></i>
+                        </button>
+                        <div class="dropdown-content dark:bg-gray-700">
+                            <a href="#knowledge" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Knowledge Center</a>
+                            <a href="#training" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Training Programs</a>
+                            <a href="#downloads" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Downloads</a>
+                            <a href="#funding" class="block px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-primary hover:text-white">Funding & Grants</a>
+                        </div>
+                    </div>
+
+                    <a href="#about" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </div>
+
+                <!-- Language Selector -->
+                <div class="hidden md:flex items-center">
+                    <div class="relative">
+                        <select id="headerLanguageSelector" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white rounded px-3 py-1 text-sm pr-8 appearance-none">
+                            <option value="en">🇺🇸 English</option>
+                            <option value="es">🇪🇸 Español</option>
+                            <option value="fr">🇫🇷 Français</option>
+                            <option value="de">🇩🇪 Deutsch</option>
+                            <option value="zh">🇨🇳 中文</option>
+                            <option value="ja">🇯🇵 日本語</option>
+                            <option value="ko">🇰🇷 한국어</option>
+                            <option value="ar">🇸🇦 العربية</option>
+                            <option value="hi">🇮🇳 हिन्दी</option>
+                            <option value="pt">🇧🇷 Português</option>
+                            <option value="ru">🇷🇺 Русский</option>
+                            <option value="sw">🇰🇪 Kiswahili</option>
+                            <option value="am">🇪🇹 አማርኛ</option>
+                            <option value="yo">🇳🇬 Yorùbá</option>
+                            <option value="ha">🇳🇬 Hausa</option>
+                            <option value="ig">🇳🇬 Igbo</option>
+                            <option value="zu">🇿🇦 isiZulu</option>
+                            <option value="xh">🇿🇦 isiXhosa</option>
+                            <option value="af">🇿🇦 Afrikaans</option>
+                            <option value="so">🇸🇴 Soomaali</option>
+                            <option value="tl">🇵🇭 Filipino</option>
+                            <option value="th">🇹🇭 ไทย</option>
+                            <option value="vi">🇻🇳 Tiếng Việt</option>
+                            <option value="id">🇮🇩 Bahasa Indonesia</option>
+                            <option value="ms">🇲🇾 Bahasa Melayu</option>
+                        </select>
+                        <i class="fas fa-chevron-down absolute right-2 top-2 text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Auth Buttons -->
+                <div class="hidden lg:flex items-center space-x-4">
+                    <button class="text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="bg-primary text-white px-6 py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobileMenuButton" class="lg:hidden text-gray-700 dark:text-gray-300">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="mobile-menu lg:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <span class="text-xl font-bold text-gray-800 dark:text-white">Menu</span>
+                    <button id="closeMobileMenu" class="text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <nav class="space-y-4">
+                    <a href="index.html" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Home</a>
+                    <div class="space-y-2">
+                        <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors mobile-dropdown-toggle">
+                            Features <i class="fas fa-chevron-down float-right mt-1"></i>
+                        </button>
+                        <div class="mobile-dropdown-content pl-4 space-y-2 hidden">
+                            <a href="weather.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Weather & Climate</a>
+                            <a href="crop-advisory.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Crop Advisory</a>
+                            <a href="livestock.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Livestock Advisory</a>
+                            <a href="market-hub.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">Market Hub</a>
+                            <a href="ai-assistant.html" class="block text-gray-600 dark:text-gray-400 hover:text-primary">AI Assistant</a>
+                            <a href="#" class="block text-voice font-semibold">Voice Assistant</a>
+                        </div>
+                    </div>
+                    <a href="#community" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Community</a>
+                    <a href="#resources" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Resources</a>
+                    <a href="#about" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">About</a>
+                    <a href="#contact" class="block text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Contact</a>
+                </nav>
+                <div class="mt-6 space-y-3">
+                    <button class="w-full text-left text-gray-700 dark:text-gray-300 hover:text-primary transition-colors">Login</button>
+                    <button class="w-full bg-primary text-white py-2 rounded-full hover:bg-secondary transition-colors">Register</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="voice-gradient text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-4xl lg:text-5xl font-bold mb-4">
+                    <i class="fas fa-microphone mr-3"></i>Multilingual Voice Assistant
+                </h1>
+                <p class="text-xl opacity-90 mb-6">Speak naturally in any language - Your AI agricultural expert understands 25+ languages</p>
+                <div class="flex justify-center items-center space-x-6">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">25+</div>
+                        <div class="text-sm opacity-75">Languages</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">99.5%</div>
+                        <div class="text-sm opacity-75">Speech Accuracy</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">24/7</div>
+                        <div class="text-sm opacity-75">Voice Support</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Voice Interface -->
+    <section class="py-8 -mt-6">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8">
+                <!-- Main Voice Area -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl">
+                        <!-- Voice Control Header -->
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div id="voiceAvatar" class="w-16 h-16 voice-gradient rounded-full flex items-center justify-center voice-pulse">
+                                        <i id="voiceAvatarIcon" class="fas fa-microphone text-white text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-gray-800 dark:text-white">VoiceBot AI</h3>
+                                        <p class="text-sm text-gray-600 dark:text-gray-300">
+                                            <span id="voiceStatus" class="inline-flex items-center">
+                                                <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                                Ready to listen
+                                            </span>
+                                            • Speaking <span id="currentVoiceLanguage">English</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button id="voiceSettings" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                    <button id="muteMicrophone" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                        <i class="fas fa-microphone-slash"></i>
+                                    </button>
+                                    <button id="toggleSpeaker" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                        <i class="fas fa-volume-up"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Voice Interface -->
+                        <div class="p-8 text-center">
+                            <!-- Large Voice Button -->
+                            <div class="mb-8">
+                                <button id="mainVoiceButton" class="w-48 h-48 mx-auto voice-gradient rounded-full flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all duration-300 voice-ripple">
+                                    <i id="mainVoiceIcon" class="fas fa-microphone text-white text-6xl"></i>
+                                </button>
+                                <p id="voiceInstruction" class="mt-4 text-lg text-gray-600 dark:text-gray-300">
+                                    Click or say "Hey AgriBot" to start
+                                </p>
+                            </div>
+
+                            <!-- Voice Visualization -->
+                            <div id="voiceVisualization" class="hidden mb-8">
+                                <div class="waveform">
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                    <div class="wave-bar"></div>
+                                </div>
+                                <p class="text-voice font-semibold mt-2">Listening...</p>
+                            </div>
+
+                            <!-- Voice Command Hints -->
+                            <div id="voiceHints" class="grid md:grid-cols-2 gap-4 mb-8">
+                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg voice-command-hint">
+                                    <i class="fas fa-comment text-voice mb-2"></i>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">"What crops should I plant?"</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg voice-command-hint">
+                                    <i class="fas fa-cloud-sun text-voice mb-2"></i>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">"How's the weather looking?"</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg voice-command-hint">
+                                    <i class="fas fa-chart-line text-voice mb-2"></i>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">"Check market prices"</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg voice-command-hint">
+                                    <i class="fas fa-paw text-voice mb-2"></i>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">"My cow is sick"</p>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <button class="quick-voice-action bg-blue-500 hover:bg-blue-600 text-white p-4 rounded-xl transition-colors" data-command="weather">
+                                    <i class="fas fa-cloud-sun text-2xl mb-2"></i>
+                                    <p class="text-sm">Weather</p>
+                                </button>
+                                <button class="quick-voice-action bg-green-500 hover:bg-green-600 text-white p-4 rounded-xl transition-colors" data-command="crops">
+                                    <i class="fas fa-leaf text-2xl mb-2"></i>
+                                    <p class="text-sm">Crops</p>
+                                </button>
+                                <button class="quick-voice-action bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-xl transition-colors" data-command="livestock">
+                                    <i class="fas fa-paw text-2xl mb-2"></i>
+                                    <p class="text-sm">Livestock</p>
+                                </button>
+                                <button class="quick-voice-action bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-xl transition-colors" data-command="market">
+                                    <i class="fas fa-chart-line text-2xl mb-2"></i>
+                                    <p class="text-sm">Market</p>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Conversation Display -->
+                        <div id="conversationArea" class="border-t border-gray-200 dark:border-gray-700 p-6 max-h-96 overflow-y-auto hidden">
+                            <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Recent Conversation</h4>
+                            <div id="conversationMessages" class="space-y-4">
+                                <!-- Messages will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="space-y-6">
+                    <!-- Language Settings -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-language text-voice mr-2"></i>Voice Language
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-2">Speaking Language</label>
+                                <select id="voiceLanguageSelector" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-voice dark:bg-gray-700 dark:text-white">
+                                    <option value="en-US">🇺🇸 English (US)</option>
+                                    <option value="en-GB">🇬🇧 English (UK)</option>
+                                    <option value="es-ES">🇪🇸 Español (España)</option>
+                                    <option value="es-MX">🇲🇽 Español (México)</option>
+                                    <option value="fr-FR">🇫🇷 Français</option>
+                                    <option value="de-DE">🇩🇪 Deutsch</option>
+                                    <option value="zh-CN">🇨🇳 中文 (简体)</option>
+                                    <option value="zh-TW">🇹🇼 中文 (繁體)</option>
+                                    <option value="ja-JP">🇯🇵 日本語</option>
+                                    <option value="ko-KR">🇰🇷 한국어</option>
+                                    <option value="ar-SA">🇸🇦 العربية</option>
+                                    <option value="hi-IN">🇮🇳 हिन्दी</option>
+                                    <option value="pt-BR">🇧🇷 Português (Brasil)</option>
+                                    <option value="pt-PT">🇵🇹 Português (Portugal)</option>
+                                    <option value="ru-RU">🇷🇺 Русский</option>
+                                    <option value="sw-KE">🇰🇪 Kiswahili</option>
+                                    <option value="am-ET">🇪🇹 አማርኛ</option>
+                                    <option value="yo-NG">🇳🇬 Yorùbá</option>
+                                    <option value="ha-NG">🇳🇬 Hausa</option>
+                                    <option value="ig-NG">🇳🇬 Igbo</option>
+                                    <option value="zu-ZA">🇿🇦 isiZulu</option>
+                                    <option value="xh-ZA">🇿🇦 isiXhosa</option>
+                                    <option value="af-ZA">🇿🇦 Afrikaans</option>
+                                    <option value="so-SO">🇸🇴 Soomaali</option>
+                                    <option value="tl-PH">🇵🇭 Filipino</option>
+                                    <option value="th-TH">🇹🇭 ไทย</option>
+                                    <option value="vi-VN">🇻🇳 Tiếng Việt</option>
+                                    <option value="id-ID">🇮🇩 Bahasa Indonesia</option>
+                                    <option value="ms-MY">🇲🇾 Bahasa Melayu</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="autoLanguageDetection" checked class="text-voice focus:ring-voice">
+                                <label for="autoLanguageDetection" class="text-sm text-gray-600 dark:text-gray-300">Auto-detect language</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="continuousListening" class="text-voice focus:ring-voice">
+                                <label for="continuousListening" class="text-sm text-gray-600 dark:text-gray-300">Continuous listening</label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="wakeWordEnabled" checked class="text-voice focus:ring-voice">
+                                <label for="wakeWordEnabled" class="text-sm text-gray-600 dark:text-gray-300">Wake word "Hey AgriBot"</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Settings -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-volume-up text-voice mr-2"></i>Voice Settings
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-2">Speech Rate</label>
+                                <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>Slow</span>
+                                    <span>Normal</span>
+                                    <span>Fast</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-2">Voice Pitch</label>
+                                <input type="range" id="voicePitch" min="0.5" max="2" step="0.1" value="1" class="w-full">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>Low</span>
+                                    <span>Normal</span>
+                                    <span>High</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-2">Volume</label>
+                                <input type="range" id="voiceVolume" min="0" max="1" step="0.1" value="1" class="w-full">
+                                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>Quiet</span>
+                                    <span>Normal</span>
+                                    <span>Loud</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-600 dark:text-gray-300 mb-2">Voice Type</label>
+                                <select id="voiceTypeSelector" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-voice dark:bg-gray-700 dark:text-white">
+                                    <option value="default">Default</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </div>
+                            <button id="testVoice" class="w-full bg-voice text-white py-2 rounded-lg hover:bg-voice-dark transition-colors">
+                                <i class="fas fa-play mr-2"></i>Test Voice
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Voice Commands Guide -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-book text-voice mr-2"></i>Voice Commands
+                        </h3>
+                        <div class="space-y-3 text-sm">
+                            <div class="border-l-4 border-voice pl-3">
+                                <p class="font-medium text-gray-800 dark:text-white">"Hey AgriBot"</p>
+                                <p class="text-gray-600 dark:text-gray-300">Wake up the assistant</p>
+                            </div>
+                            <div class="border-l-4 border-blue-500 pl-3">
+                                <p class="font-medium text-gray-800 dark:text-white">"What's the weather?"</p>
+                                <p class="text-gray-600 dark:text-gray-300">Get weather forecast</p>
+                            </div>
+                            <div class="border-l-4 border-green-500 pl-3">
+                                <p class="font-medium text-gray-800 dark:text-white">"Crop advice for maize"</p>
+                                <p class="text-gray-600 dark:text-gray-300">Get farming guidance</p>
+                            </div>
+                            <div class="border-l-4 border-orange-500 pl-3">
+                                <p class="font-medium text-gray-800 dark:text-white">"Market prices today"</p>
+                                <p class="text-gray-600 dark:text-gray-300">Check commodity prices</p>
+                            </div>
+                            <div class="border-l-4 border-purple-500 pl-3">
+                                <p class="font-medium text-gray-800 dark:text-white">"Switch to Spanish"</p>
+                                <p class="text-gray-600 dark:text-gray-300">Change language</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Activity -->
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-4">
+                            <i class="fas fa-history text-voice mr-2"></i>Recent Activity
+                        </h3>
+                        <div id="voiceActivity" class="space-y-2 text-sm">
+                            <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                <span class="text-gray-600 dark:text-gray-300">Weather inquiry</span>
+                                <span class="text-xs text-gray-500">2 min ago</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                <span class="text-gray-600 dark:text-gray-300">Crop advice</span>
+                                <span class="text-xs text-gray-500">5 min ago</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                                <span class="text-gray-600 dark:text-gray-300">Language switch</span>
+                                <span class="text-xs text-gray-500">10 min ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Voice Features Showcase -->
+    <section class="py-8 bg-white dark:bg-gray-800">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8 text-center">
+                <i class="fas fa-microphone text-voice mr-2"></i>Advanced Voice Capabilities
+            </h2>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Natural Language Processing -->
+                <div class="text-center p-6 rounded-xl bg-gray-50 dark:bg-gray-700">
+                    <div class="w-16 h-16 voice-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-brain text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-3">Natural Understanding</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Understands context, intent, and natural speech patterns in any supported language.</p>
+                    <ul class="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                        <li>• Context awareness</li>
+                        <li>• Intent recognition</li>
+                        <li>• Conversational memory</li>
+                        <li>• Emotion detection</li>
+                    </ul>
+                </div>
+
+                <!-- Multilingual Support -->
+                <div class="text-center p-6 rounded-xl bg-gray-50 dark:bg-gray-700">
+                    <div class="w-16 h-16 voice-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-globe text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-3">25+ Languages</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Speak in your native language - from English to Swahili, Hindi to Arabic, and many more.</p>
+                    <ul class="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                        <li>• Real-time translation</li>
+                        <li>• Accent adaptation</li>
+                        <li>• Cultural context</li>
+                        <li>• Local dialects</li>
+                    </ul>
+                </div>
+
+                <!-- Agricultural Expertise -->
+                <div class="text-center p-6 rounded-xl bg-gray-50 dark:bg-gray-700">
+                    <div class="w-16 h-16 voice-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-seedling text-white text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-3">Expert Knowledge</h3>
+                    <p class="text-gray-600 dark:text-gray-300 mb-4">Specialized in agriculture with deep knowledge of crops, livestock, weather, and markets.</p>
+                    <ul class="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                        <li>• Crop management</li>
+                        <li>• Weather analysis</li>
+                        <li>• Market intelligence</li>
+                        <li>• Best practices</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-gray-900 text-white py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid lg:grid-cols-4 gap-8 mb-12">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center space-x-3 mb-6">
+                        <div class="w-10 h-10 climate-gradient rounded-full flex items-center justify-center">
+                            <i class="fas fa-seedling text-white text-lg"></i>
+                        </div>
+                        <span class="text-2xl font-bold">Agriclimate Connect</span>
+                    </div>
+                    <p class="text-gray-300 mb-6">Revolutionizing agriculture through AI-powered voice assistance and multilingual support for farmers worldwide.</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-linkedin-in"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Quick Links</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#features" class="text-gray-300 hover:text-primary transition-colors">Features</a></li>
+                        <li><a href="#weather" class="text-gray-300 hover:text-primary transition-colors">Weather Insights</a></li>
+                        <li><a href="#crops" class="text-gray-300 hover:text-primary transition-colors">Crop Advisory</a></li>
+                        <li><a href="#livestock" class="text-gray-300 hover:text-primary transition-colors">Livestock Management</a></li>
+                        <li><a href="#market" class="text-gray-300 hover:text-primary transition-colors">Market Hub</a></li>
+                        <li><a href="#community" class="text-gray-300 hover:text-primary transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Resources</h3>
+                    <ul class="space-y-3">
+                        <li><a href="#knowledge" class="text-gray-300 hover:text-primary transition-colors">Knowledge Center</a></li>
+                        <li><a href="#training" class="text-gray-300 hover:text-primary transition-colors">Training Programs</a></li>
+                        <li><a href="#downloads" class="text-gray-300 hover:text-primary transition-colors">Downloads</a></li>
+                        <li><a href="#funding" class="text-gray-300 hover:text-primary transition-colors">Funding & Grants</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Voice Commands Guide</a></li>
+                        <li><a href="#" class="text-gray-300 hover:text-primary transition-colors">Language Support</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact & Newsletter -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-6">Stay Connected</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-envelope text-primary"></i>
+                            <span class="text-gray-300">support@agriclimateconnect.com</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-phone text-primary"></i>
+                            <span class="text-gray-300">+1-800-AGRI-VOICE</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <span class="text-gray-300">Global Headquarters</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Newsletter Signup -->
+                    <div class="mt-6">
+                        <h4 class="font-semibold mb-3">Newsletter</h4>
+                        <div class="flex space-x-2">
+                            <input type="email" placeholder="Your email" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-primary text-base">
+                            <button class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition-colors">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-gray-700 pt-8">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-gray-300 text-sm mb-4 md:mb-0">
+                        © 2024 Agriclimate Connect. All rights reserved.
+                    </div>
+                    <div class="flex space-x-6 text-sm">
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Privacy Policy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Terms of Service</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Voice Privacy</a>
+                        <a href="#" class="text-gray-300 hover:text-primary transition-colors">Accessibility</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Global voice assistant variables
+        let isListening = false;
+        let isVoiceEnabled = true;
+        let currentLanguage = 'en-US';
+        let recognition = null;
+        let synthesis = window.speechSynthesis;
+        let currentVoice = null;
+        let conversationHistory = [];
+        let isWakeWordActive = true;
+        let isContinuousListening = false;
+        let isProcessingAI = false;
+
+        // Language configurations for multilingual support
+        const languageConfig = {
+            'en-US': {
+                code: 'en',
+                name: 'English (US)',
+                greeting: 'Hello! I\'m your multilingual agricultural voice assistant. I can understand and respond in over 25 languages. How can I help you with farming today?',
+                activationWords: ['hey agribot', 'hello agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'What crops should I plant this season?',
+                    'How is the weather looking for farming?',
+                    'What are today\'s market prices?',
+                    'My livestock needs health advice'
+                ]
+            },
+            'es-ES': {
+                code: 'es',
+                name: 'Español',
+                greeting: '¡Hola! Soy tu asistente agrícola de voz multilingüe. Puedo entender y responder en más de 25 idiomas. ¿Cómo puedo ayudarte con la agricultura hoy?',
+                activationWords: ['hey agribot', 'hola agribot', 'ok agribot'],
+                sampleQuestions: [
+                    '¿Qué cultivos debo plantar esta temporada?',
+                    '¿Cómo está el clima para la agricultura?',
+                    '¿Cuáles son los precios del mercado hoy?',
+                    'Mi ganado necesita consejos de salud'
+                ]
+            },
+            'fr-FR': {
+                code: 'fr',
+                name: 'Français',
+                greeting: 'Bonjour! Je suis votre assistant agricole vocal multilingue. Je peux comprendre et répondre dans plus de 25 langues. Comment puis-je vous aider avec l\'agriculture aujourd\'hui?',
+                activationWords: ['hey agribot', 'bonjour agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'Quelles cultures dois-je planter cette saison?',
+                    'Comment est le temps pour l\'agriculture?',
+                    'Quels sont les prix du marché aujourd\'hui?',
+                    'Mon bétail a besoin de conseils de santé'
+                ]
+            },
+            'sw-KE': {
+                code: 'sw',
+                name: 'Kiswahili',
+                greeting: 'Hujambo! Mimi ni msaidizi wako wa kilimo wa sauti wa lugha nyingi. Ninaweza kuelewa na kujibu kwa lugha zaidi ya 25. Ninawezaje kukusaidia na kilimo leo?',
+                activationWords: ['hey agribot', 'hujambo agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'Ni mazao gani nipande msimu huu?',
+                    'Hali ya hewa inawezaje kwa kilimo?',
+                    'Bei za soko ni zipi leo?',
+                    'Mifugo yangu inahitaji ushauri wa afya'
+                ]
+            },
+            'hi-IN': {
+                code: 'hi',
+                name: 'हिन्दी',
+                greeting: 'नमस्ते! मैं आपका बहुभाषी कृषि आवाज सहायक हूं। मैं 25 से अधिक भाषाओं में समझ और जवाब दे सकता हूं। आज कृषि के साथ मैं आपकी कैसे मदद कर सकता हूं?',
+                activationWords: ['hey agribot', 'namaste agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'इस मौसम में कौन सी फसल लगानी चाहिए?',
+                    'कृषि के लिए मौसम कैसा है?',
+                    'आज बाजार की कीमतें क्या हैं?',
+                    'मेरे पशुधन को स्वास्थ्य सलाह चाहिए'
+                ]
+            },
+            'ar-SA': {
+                code: 'ar',
+                name: 'العربية',
+                greeting: 'مرحباً! أنا مساعدك الصوتي الزراعي متعدد اللغات. يمكنني فهم والرد بأكثر من 25 لغة. كيف يمكنني مساعدتك في الزراعة اليوم؟',
+                activationWords: ['hey agribot', 'مرحبا agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'ما المحاصيل التي يجب أن أزرعها هذا الموسم؟',
+                    'كيف هو الطقس للزراعة؟',
+                    'ما هي أسعار السوق اليوم؟',
+                    'تحتاج ماشيتي إلى نصائح صحية'
+                ]
+            },
+            'pt-BR': {
+                code: 'pt',
+                name: 'Português',
+                greeting: 'Olá! Sou seu assistente de voz agrícola multilíngue. Posso entender e responder em mais de 25 idiomas. Como posso ajudá-lo com a agricultura hoje?',
+                activationWords: ['hey agribot', 'olá agribot', 'ok agribot'],
+                sampleQuestions: [
+                    'Que culturas devo plantar esta temporada?',
+                    'Como está o tempo para a agricultura?',
+                    'Quais são os preços do mercado hoje?',
+                    'Meu gado precisa de conselhos de saúde'
+                ]
+            },
+            'zh-CN': {
+                code: 'zh',
+                name: '中文',
+                greeting: '您好！我是您的多语言农业语音助手。我可以理解并用超过25种语言回答。今天我如何能在农业方面帮助您？',
+                activationWords: ['hey agribot', '你好 agribot', 'ok agribot'],
+                sampleQuestions: [
+                    '这个季节我应该种植什么作物？',
+                    '农业天气如何？',
+                    '今天的市场价格是多少？',
+                    '我的牲畜需要健康建议'
+                ]
+            }
+        };
+
+        // Initialize the voice assistant
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDarkMode();
+            initializeSpeechRecognition();
+            initializeSpeechSynthesis();
+            initializePoeAPI();
+            setupEventListeners();
+            setupWakeWordDetection();
+            updateLanguageInterface();
+            loadVoiceSettings();
+        });
+
+        // Dark mode initialization
+        function initializeDarkMode() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (event.matches) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            });
+        }
+
+        // Initialize Poe API for AI responses
+        function initializePoeAPI() {
+            if (window.Poe && window.Poe.registerHandler) {
+                window.Poe.registerHandler('voice-assistant-handler', handleAIResponse);
+            }
+        }
+
+        // Handle AI responses from Poe
+        function handleAIResponse(result, context) {
+            const messages = result.responses;
+            if (messages && messages.length > 0) {
+                const aiMessage = messages[0];
+                
+                if (aiMessage.status === 'incomplete') {
+                    // Handle streaming response
+                    updateConversationDisplay(aiMessage.content, false, false);
+                } else if (aiMessage.status === 'complete') {
+                    // Handle complete response
+                    updateConversationDisplay(aiMessage.content, false, true);
+                    
+                    // Speak the response if voice is enabled
+                    if (isVoiceEnabled && !document.getElementById('muteMicrophone').classList.contains('text-red-500')) {
+                        speakText(aiMessage.content);
+                    }
+                    
+                    isProcessingAI = false;
+                    updateVoiceStatus('ready');
+                    
+                    // Resume listening if continuous mode is on
+                    if (isContinuousListening) {
+                        setTimeout(() => startListening(), 1000);
+                    }
+                } else if (aiMessage.status === 'error') {
+                    showVoiceError();
+                    isProcessingAI = false;
+                    updateVoiceStatus('error');
+                }
+            }
+        }
+
+        // Send voice input to AI using Poe API
+        async function sendVoiceToAI(transcript, detectedLanguage = currentLanguage) {
+            if (isProcessingAI) return;
+            
+            isProcessingAI = true;
+            updateVoiceStatus('processing');
+            
+            // Add user message to conversation
+            updateConversationDisplay(transcript, true, true);
+            
+            const contextPrompt = buildVoiceAIPrompt(transcript, detectedLanguage);
+            
+            try {
+                if (window.Poe && window.Poe.sendUserMessage) {
+                    await window.Poe.sendUserMessage(contextPrompt, {
+                        handler: 'voice-assistant-handler',
+                        stream: true,
+                        openChat: false
+                    });
+                } else {
+                    // Fallback to local AI simulation
+                    setTimeout(() => {
+                        const response = getLocalVoiceAIResponse(transcript, detectedLanguage);
+                        updateConversationDisplay(response, false, true);
+                        
+                        if (isVoiceEnabled) {
+                            speakText(response);
+                        }
+                        
+                        isProcessingAI = false;
+                        updateVoiceStatus('ready');
+                        
+                        if (isContinuousListening) {
+                            setTimeout(() => startListening(), 1000);
+                        }
+                    }, 1500);
+                }
+            } catch (error) {
+                console.error('Voice AI API error:', error);
+                showVoiceError();
+                isProcessingAI = false;
+                updateVoiceStatus('error');
+            }
+        }
+
+        // Build voice-specific AI prompt
+        function buildVoiceAIPrompt(transcript, language) {
+            const langConfig = languageConfig[language] || languageConfig['en-US'];
+            const detectedLanguageCode = detectLanguageFromText(transcript);
+            const responseLanguage = detectedLanguageCode || langConfig.code;
+            
+            const conversationContext = conversationHistory.length > 0 ? 
+                `Previous conversation: ${conversationHistory.slice(-3).map(msg => `${msg.type}: ${msg.content}`).join(' | ')}` : 
+                '';
+            
+            const systemPrompt = `You are an expert multilingual agricultural voice assistant with the following capabilities:
+
+CORE EXPERTISE:
+- Climate-smart agriculture and sustainable farming practices
+- Crop selection, planting, harvesting, and post-harvest management
+- Livestock care, breeding, nutrition, and health management
+- Weather analysis and climate adaptation strategies
+- Agricultural market intelligence and price analysis
+- Soil health, fertilization, and pest management
+- Modern farming technology and precision agriculture
+
+VOICE INTERACTION GUIDELINES:
+- This is a VOICE conversation - keep responses conversational and natural
+- Respond in the SAME language the user is speaking
+- For greetings in any language, respond warmly and naturally
+- Keep responses concise but informative (30-60 seconds when spoken)
+- Use simple, clear language suitable for voice interaction
+- Ask follow-up questions to continue the conversation naturally
+- Be encouraging and supportive in your tone
+
+MULTILINGUAL SUPPORT:
+- Auto-detect user's language from their speech
+- Respond in the detected language naturally
+- Support for: English, Spanish, French, German, Chinese, Japanese, Korean, Arabic, Hindi, Portuguese, Russian, Swahili, Amharic, Yoruba, Hausa, Igbo, Zulu, Xhosa, Afrikaans, Somali, Filipino, Thai, Vietnamese, Indonesian, Malay
+- Consider cultural and regional farming practices
+- Use appropriate agricultural terminology for each language/region
+
+VOICE COMMAND HANDLING:
+- "Hey AgriBot" or similar: Acknowledge and ask how to help
+- Weather questions: Provide relevant climate advice
+- Crop questions: Give specific planting/care guidance
+- Livestock questions: Offer health and management advice
+- Market questions: Share price trends and selling tips
+- Language switching: Acknowledge and switch languages smoothly
+
+Current user language: ${responseLanguage}
+Voice input detected: "${transcript}"
+
+${conversationContext}
+
+Respond naturally as a knowledgeable agricultural voice assistant in the user's language:`;
+
+            return `@Claude-Sonnet-4 ${systemPrompt}`;
+        }
+
+        // Detect language from text content
+        function detectLanguageFromText(text) {
+            const languagePatterns = {
+                es: /\b(hola|buenos|días|gracias|por favor|cómo|qué|dónde|cuándo|cultivos|ganado|precio)\b/i,
+                fr: /\b(bonjour|salut|merci|s'il vous plaît|comment|que|où|quand|cultures|bétail|prix)\b/i,
+                de: /\b(hallo|guten|tag|danke|bitte|wie|was|wo|wann|kulturen|vieh|preis)\b/i,
+                pt: /\b(olá|oi|obrigado|por favor|como|que|onde|quando|culturas|gado|preço)\b/i,
+                sw: /\b(hujambo|jambo|asante|tafadhali|vipi|nini|wapi|lini|mazao|mifugo|bei)\b/i,
+                hi: /[\u0900-\u097F]|namaste|dhanyawad|kripaya|fasal|pashu|kimmat/i,
+                ar: /[\u0600-\u06FF]|مرحبا|شكرا|من فضلك|محاصيل|ماشية|سعر/i,
+                zh: /[\u4e00-\u9fff]|你好|谢谢|请|作物|牲畜|价格/i,
+                ja: /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]|こんにちは|ありがとう|作物|家畜|価格/i,
+                ko: /[\uac00-\ud7af]|안녕하세요|감사합니다|작물|가축|가격/i,
+                ru: /[\u0400-\u04FF]|привет|спасибо|пожалуйста|культуры|скот|цена/i
+            };
+            
+            for (const [lang, pattern] of Object.entries(languagePatterns)) {
+                if (pattern.test(text)) {
+                    return lang;
+                }
+            }
+            
+            return null; // Default to current language if no specific language detected
+        }
+
+        // Local voice AI response fallback
+        function getLocalVoiceAIResponse(transcript, language) {
+            const langConfig = languageConfig[language] || languageConfig['en-US'];
+            const lowerTranscript = transcript.toLowerCase();
+            
+            // Check for wake words
+            if (langConfig.activationWords.some(word => lowerTranscript.includes(word))) {
+                return langConfig.greeting;
+            }
+            
+            // Check for greetings in different languages
+            const greetingPatterns = {
+                en: /\b(hello|hi|hey|good morning|good afternoon|good evening)\b/i,
+                es: /\b(hola|buenos días|buenas tardes|buenas noches)\b/i,
+                fr: /\b(bonjour|salut|bonsoir)\b/i,
+                sw: /\b(hujambo|jambo|habari)\b/i,
+                hi: /\b(नमस्ते|नमस्कार|सुप्रभात)\b/i,
+                ar: /\b(مرحبا|السلام عليكم|صباح الخير)\b/i,
+                zh: /\b(你好|您好|早上好)\b/i,
+                pt: /\b(olá|oi|bom dia|boa tarde)\b/i
+            };
+            
+            for (const [lang, pattern] of Object.entries(greetingPatterns)) {
+                if (pattern.test(transcript)) {
+                    const targetLang = Object.keys(languageConfig).find(key => 
+                        languageConfig[key].code === lang
+                    ) || language;
+                    return languageConfig[targetLang]?.greeting || langConfig.greeting;
+                }
+            }
+            
+            // Topic-specific responses in user's language
+            const responses = {
+                'en-US': {
+                    weather: "The weather is looking favorable for farming this week. Expect partly cloudy skies with temperatures around 75°F. Perfect conditions for planting and irrigation. Should I check the 7-day forecast for your specific location?",
+                    crops: "For this growing season, I recommend drought-resistant varieties like sorghum and millet. These crops are well-adapted to your climate and have good market demand. Would you like specific planting schedules and care instructions?",
+                    livestock: "For healthy livestock, ensure they have access to clean water, balanced nutrition, and regular veterinary care. What specific animals are you raising? I can provide detailed care guidelines.",
+                    market: "Current market prices show strong demand for organic produce and grains. Maize is trading at $245 per ton, wheat at $312 per ton. Are you planning to sell or buy specific commodities?",
+                    default: "I'm here to help with all your farming needs. I can provide guidance on crops, weather, livestock, and markets. What specific agricultural challenge can I assist you with today?"
+                },
+                'es-ES': {
+                    weather: "El clima se ve favorable para la agricultura esta semana. Espere cielos parcialmente nublados con temperaturas alrededor de 24°C. Condiciones perfectas para plantar y regar. ¿Debo revisar el pronóstico de 7 días para su ubicación específica?",
+                    crops: "Para esta temporada de cultivo, recomiendo variedades resistentes a la sequía como sorgo y mijo. Estos cultivos están bien adaptados a su clima y tienen buena demanda del mercado. ¿Le gustaría horarios específicos de siembra e instrucciones de cuidado?",
+                    livestock: "Para ganado saludable, asegúrese de que tengan acceso a agua limpia, nutrición equilibrada y atención veterinaria regular. ¿Qué animales específicos está criando? Puedo proporcionar pautas detalladas de cuidado.",
+                    market: "Los precios actuales del mercado muestran una fuerte demanda de productos orgánicos y granos. El maíz se cotiza a $245 por tonelada, el trigo a $312 por tonelada. ¿Planea vender o comprar productos específicos?",
+                    default: "Estoy aquí para ayudar con todas sus necesidades agrícolas. Puedo proporcionar orientación sobre cultivos, clima, ganado y mercados. ¿Con qué desafío agrícola específico puedo ayudarle hoy?"
+                }
+            };
+            
+            // Determine response based on content
+            if (lowerTranscript.includes('weather') || lowerTranscript.includes('clima') || lowerTranscript.includes('tiempo')) {
+                return responses[language]?.weather || responses['en-US'].weather;
+            }
+            if (lowerTranscript.includes('crop') || lowerTranscript.includes('plant') || lowerTranscript.includes('cultivo') || lowerTranscript.includes('mazao')) {
+                return responses[language]?.crops || responses['en-US'].crops;
+            }
+            if (lowerTranscript.includes('livestock') || lowerTranscript.includes('animal') || lowerTranscript.includes('ganado') || lowerTranscript.includes('mifugo')) {
+                return responses[language]?.livestock || responses['en-US'].livestock;
+            }
+            if (lowerTranscript.includes('market') || lowerTranscript.includes('price') || lowerTranscript.includes('mercado') || lowerTranscript.includes('soko')) {
+                return responses[language]?.market || responses['en-US'].market;
+            }
+            
+            return responses[language]?.default || responses['en-US'].default;
+        }
+
+        // Initialize Speech Recognition
+        function initializeSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = currentLanguage;
+                recognition.maxAlternatives = 3;
+                
+                recognition.onstart = function() {
+                    isListening = true;
+                    updateVoiceStatus('listening');
+                    showVoiceVisualization();
+                };
+                
+                recognition.onresult = function(event) {
+                    let transcript = '';
+                    let isFinal = false;
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            isFinal = true;
+                        }
+                    }
+                    
+                    if (isFinal && transcript.trim()) {
+                        processVoiceInput(transcript);
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                    updateVoiceStatus('error');
+                    hideVoiceVisualization();
+                    isListening = false;
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    hideVoiceVisualization();
+                    
+                    if (!isProcessingAI) {
+                        updateVoiceStatus('ready');
+                    }
+                };
+                
+            } else {
+                console.warn('Speech recognition not supported in this browser');
+                updateVoiceStatus('unsupported');
+            }
+        }
+
+        // Initialize Speech Synthesis
+        function initializeSpeechSynthesis() {
+            if (synthesis) {
+                // Wait for voices to load
+                const loadVoices = () => {
+                    const voices = synthesis.getVoices();
+                    if (voices.length > 0) {
+                        updateVoiceOptions();
+                        selectBestVoice();
+                    }
+                };
+                
+                synthesis.addEventListener('voiceschanged', loadVoices);
+                loadVoices(); // Initial load
+            }
+        }
+
+        // Update available voice options
+        function updateVoiceOptions() {
+            const voices = synthesis.getVoices();
+            const langCode = currentLanguage.split('-')[0];
+            
+            // Find suitable voices for current language
+            const suitableVoices = voices.filter(voice => 
+                voice.lang.startsWith(langCode) || voice.lang.startsWith(currentLanguage)
+            );
+            
+            if (suitableVoices.length > 0) {
+                currentVoice = suitableVoices[0];
+            } else {
+                currentVoice = voices[0]; // Fallback to first available voice
+            }
+        }
+
+        // Select best voice for current language
+        function selectBestVoice() {
+            const voices = synthesis.getVoices();
+            const voiceType = document.getElementById('voiceTypeSelector').value;
+            const langCode = currentLanguage.split('-')[0];
+            
+            let filteredVoices = voices.filter(voice => 
+                voice.lang.startsWith(langCode) || voice.lang.startsWith(currentLanguage)
+            );
+            
+            // Filter by gender preference if specified
+            if (voiceType !== 'default') {
+                const genderVoices = filteredVoices.filter(voice => {
+                    const name = voice.name.toLowerCase();
+                    if (voiceType === 'female') {
+                        return name.includes('female') || name.includes('woman') || 
+                               name.includes('alice') || name.includes('samantha') ||
+                               name.includes('karen') || name.includes('victoria');
+                    } else if (voiceType === 'male') {
+                        return name.includes('male') || name.includes('man') || 
+                               name.includes('daniel') || name.includes('alex') ||
+                               name.includes('tom') || name.includes('david');
+                    }
+                    return true;
+                });
+                
+                if (genderVoices.length > 0) {
+                    filteredVoices = genderVoices;
+                }
+            }
+            
+            currentVoice = filteredVoices[0] || voices[0];
+        }
+
+        // Start listening for voice input
+        function startListening() {
+            if (recognition && !isListening && !isProcessingAI) {
+                try {
+                    recognition.lang = currentLanguage;
+                    recognition.start();
+                } catch (error) {
+                    console.error('Error starting speech recognition:', error);
+                    updateVoiceStatus('error');
+                }
+            }
+        }
+
+        // Stop listening
+        function stopListening() {
+            if (recognition && isListening) {
+                recognition.stop();
+            }
+        }
+
+        // Process voice input
+        function processVoiceInput(transcript) {
+            hideVoiceVisualization();
+            
+            // Check for wake words if wake word detection is enabled
+            if (isWakeWordActive) {
+                const langConfig = languageConfig[currentLanguage] || languageConfig['en-US'];
+                const hasWakeWord = langConfig.activationWords.some(word => 
+                    transcript.toLowerCase().includes(word)
+                );
+                
+                if (!hasWakeWord && !isContinuousListening) {
+                    updateVoiceStatus('ready');
+                    return;
+                }
+            }
+            
+            // Auto-detect language if enabled
+            if (document.getElementById('autoLanguageDetection').checked) {
+                const detectedLang = detectLanguageFromText(transcript);
+                if (detectedLang) {
+                    const newLangCode = findLanguageCode(detectedLang);
+                    if (newLangCode && newLangCode !== currentLanguage) {
+                        switchLanguage(newLangCode);
+                    }
+                }
+            }
+            
+            // Send to AI for processing
+            sendVoiceToAI(transcript, currentLanguage);
+            addToVoiceActivity('Voice input', transcript);
+        }
+
+        // Find language code from detected language
+        function findLanguageCode(detectedLang) {
+            for (const [code, config] of Object.entries(languageConfig)) {
+                if (config.code === detectedLang) {
+                    return code;
+                }
+            }
+            return null;
+        }
+
+        // Speak text using text-to-speech
+        function speakText(text) {
+            if (synthesis && isVoiceEnabled && currentVoice) {
+                synthesis.cancel(); // Stop any ongoing speech
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = currentVoice;
+                utterance.rate = parseFloat(document.getElementById('speechRate').value);
+                utterance.pitch = parseFloat(document.getElementById('voicePitch').value);
+                utterance.volume = parseFloat(document.getElementById('voiceVolume').value);
+                
+                utterance.onstart = function() {
+                    updateVoiceStatus('speaking');
+                    document.getElementById('voiceAvatar').classList.add('speaking-animation');
+                };
+                
+                utterance.onend = function() {
+                    updateVoiceStatus('ready');
+                    document.getElementById('voiceAvatar').classList.remove('speaking-animation');
+                };
+                
+                utterance.onerror = function(event) {
+                    console.error('Speech synthesis error:', event.error);
+                    updateVoiceStatus('error');
+                };
+                
+                synthesis.speak(utterance);
+            }
+        }
+
+        // Setup wake word detection
+        function setupWakeWordDetection() {
+            if (isWakeWordActive && recognition) {
+                // Start continuous listening for wake words
+                const startWakeWordDetection = () => {
+                    if (!isListening && !isProcessingAI && isWakeWordActive) {
+                        try {
+                            recognition.continuous = true;
+                            recognition.start();
+                        } catch (error) {
+                            // Silently handle errors in wake word detection
+                            setTimeout(startWakeWordDetection, 1000);
+                        }
+                    }
+                };
+                
+                // Initialize wake word detection
+                if (document.getElementById('wakeWordEnabled').checked) {
+                    startWakeWordDetection();
+                }
+            }
+        }
+
+        // Update voice status display
+        function updateVoiceStatus(status) {
+            const statusText = document.getElementById('voiceStatus');
+            const statusIcon = document.getElementById('statusIcon');
+            const voiceAvatar = document.getElementById('voiceAvatar');
+            const mainVoiceIcon = document.getElementById('mainVoiceIcon');
+            const voiceInstruction = document.getElementById('voiceInstruction');
+            
+            const statusMessages = {
+                ready: 'Ready to listen',
+                listening: 'Listening...',
+                processing: 'Processing...',
+                speaking: 'Speaking...',
+                error: 'Error occurred',
+                unsupported: 'Not supported'
+            };
+            
+            const statusIcons = {
+                ready: 'fas fa-microphone',
+                listening: 'fas fa-microphone-alt',
+                processing: 'fas fa-brain',
+                speaking: 'fas fa-volume-up',
+                error: 'fas fa-exclamation-triangle',
+                unsupported: 'fas fa-times'
+            };
+            
+            const statusColors = {
+                ready: 'text-green-500',
+                listening: 'text-blue-500',
+                processing: 'text-yellow-500',
+                speaking: 'text-purple-500',
+                error: 'text-red-500',
+                unsupported: 'text-gray-500'
+            };
+            
+            if (statusText) {
+                statusText.innerHTML = `
+                    <span class="inline-flex items-center">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                        ${statusMessages[status] || statusMessages.ready}
+                    </span>
+                `;
+            }
+            
+            if (statusIcon) {
+                statusIcon.className = `w-3 h-3 rounded-full ${
+                    status === 'ready' ? 'bg-green-500' :
+                    status === 'listening' ? 'bg-blue-500' :
+                    status === 'processing' ? 'bg-yellow-500' :
+                    status === 'speaking' ? 'bg-purple-500' :
+                    status === 'error' ? 'bg-red-500' : 'bg-gray-500'
+                }`;
+            }
+            
+            if (mainVoiceIcon) {
+                mainVoiceIcon.className = statusIcons[status] || statusIcons.ready + ' text-white text-6xl';
+            }
+            
+            if (voiceInstruction) {
+                const instructions = {
+                    ready: 'Click or say "Hey AgriBot" to start',
+                    listening: 'I\'m listening... speak now',
+                    processing: 'Processing your request...',
+                    speaking: 'Speaking response...',
+                    error: 'Error - please try again',
+                    unsupported: 'Voice not supported in this browser'
+                };
+                
+                voiceInstruction.textContent = instructions[status] || instructions.ready;
+            }
+            
+            // Update voice status indicator
+            const indicator = document.getElementById('voiceStatusIndicator');
+            if (indicator) {
+                if (status === 'listening' || status === 'processing' || status === 'speaking') {
+                    indicator.classList.remove('hidden');
+                    indicator.querySelector('#statusText').textContent = statusMessages[status];
+                } else {
+                    indicator.classList.add('hidden');
+                }
+            }
+        }
+
+        // Show/hide voice visualization
+        function showVoiceVisualization() {
+            const visualization = document.getElementById('voiceVisualization');
+            const hints = document.getElementById('voiceHints');
+            if (visualization) {
+                visualization.classList.remove('hidden');
+            }
+            if (hints) {
+                hints.classList.add('hidden');
+            }
+        }
+
+        function hideVoiceVisualization() {
+            const visualization = document.getElementById('voiceVisualization');
+            const hints = document.getElementById('voiceHints');
+            if (visualization) {
+                visualization.classList.add('hidden');
+            }
+            if (hints) {
+                hints.classList.remove('hidden');
+            }
+        }
+
+        // Update conversation display
+        function updateConversationDisplay(message, isUser, isFinal) {
+            const conversationArea = document.getElementById('conversationArea');
+            const messagesContainer = document.getElementById('conversationMessages');
+            
+            // Show conversation area
+            conversationArea.classList.remove('hidden');
+            
+            if (isUser) {
+                // Add user message
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'flex justify-end mb-4';
+                messageDiv.innerHTML = `
+                    <div class="bg-voice text-white p-3 rounded-lg max-w-xs">
+                        <p class="text-sm">${message}</p>
+                        <span class="text-xs opacity-75">${new Date().toLocaleTimeString()}</span>
+                    </div>
+                `;
+                messagesContainer.appendChild(messageDiv);
+            } else {
+                // Add or update AI message
+                let aiMessageDiv = messagesContainer.querySelector('.ai-message-latest');
+                
+                if (!aiMessageDiv) {
+                    aiMessageDiv = document.createElement('div');
+                    aiMessageDiv.className = 'flex mb-4 ai-message-latest';
+                    aiMessageDiv.innerHTML = `
+                        <div class="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg max-w-xs">
+                            <p class="text-sm text-gray-800 dark:text-white"></p>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">${new Date().toLocaleTimeString()}</span>
+                        </div>
+                    `;
+                    messagesContainer.appendChild(aiMessageDiv);
+                }
+                
+                const messageText = aiMessageDiv.querySelector('p');
+                messageText.textContent = message;
+                
+                if (isFinal) {
+                    aiMessageDiv.classList.remove('ai-message-latest');
+                }
+            }
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Store in conversation history
+            if (isFinal) {
+                conversationHistory.push({
+                    type: isUser ? 'user' : 'assistant',
+                    content: message,
+                    language: currentLanguage,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // Switch language
+        function switchLanguage(newLanguage) {
+            currentLanguage = newLanguage;
+            
+            // Update UI elements
+            document.getElementById('voiceLanguageSelector').value = newLanguage;
+            document.getElementById('headerLanguageSelector').value = newLanguage.split('-')[0];
+            
+            // Update speech recognition language
+            if (recognition) {
+                recognition.lang = newLanguage;
+            }
+            
+            // Update speech synthesis voice
+            selectBestVoice();
+            
+            // Update interface
+            updateLanguageInterface();
+            
+            // Announce language change
+            const langConfig = languageConfig[newLanguage] || languageConfig['en-US'];
+            const announcement = `Language switched to ${langConfig.name}`;
+            speakText(announcement);
+            
+            addToVoiceActivity('Language change', `Switched to ${langConfig.name}`);
+        }
+
+        // Update language interface
+        function updateLanguageInterface() {
+            const langConfig = languageConfig[currentLanguage] || languageConfig['en-US'];
+            document.getElementById('currentVoiceLanguage').textContent = langConfig.name;
+            
+            // Update voice hints
+            const hints = document.getElementById('voiceHints');
+            if (hints && langConfig.sampleQuestions) {
+                const hintDivs = hints.querySelectorAll('.voice-command-hint p');
+                langConfig.sampleQuestions.forEach((question, index) => {
+                    if (hintDivs[index]) {
+                        hintDivs[index].textContent = `"${question}"`;
+                    }
+                });
+            }
+        }
+
+        // Add to voice activity log
+        function addToVoiceActivity(type, description) {
+            const activityContainer = document.getElementById('voiceActivity');
+            
+            // Create new activity item
+            const activityItem = document.createElement('div');
+            activityItem.className = 'flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded';
+            activityItem.innerHTML = `
+                <span class="text-gray-600 dark:text-gray-300">${type}</span>
+                <span class="text-xs text-gray-500">Just now</span>
+            `;
+            
+            // Add to top of list
+            activityContainer.insertBefore(activityItem, activityContainer.firstChild);
+            
+            // Keep only last 5 items
+            while (activityContainer.children.length > 5) {
+                activityContainer.removeChild(activityContainer.lastChild);
+            }
+        }
+
+        // Show voice error
+        function showVoiceError() {
+            const errorMessages = {
+                'en-US': "I'm sorry, I'm having trouble understanding. Please try speaking again.",
+                'es-ES': "Lo siento, tengo problemas para entender. Por favor, intenta hablar de nuevo.",
+                'fr-FR': "Je suis désolé, j'ai du mal à comprendre. Veuillez essayer de parler à nouveau.",
+                'sw-KE': "Samahani, nina matatizo ya kuelewa. Tafadhali jaribu kuzungumza tena.",
+                'hi-IN': "मुझे खेद है, मुझे समझने में कठिनाई हो रही है। कृपया फिर से बोलने की कोशिश करें।",
+                'ar-SA': "أعتذر، أواجه صعوبة في الفهم. يرجى المحاولة مرة أخرى.",
+                'pt-BR': "Desculpe, estou tendo problemas para entender. Por favor, tente falar novamente.",
+                'zh-CN': "对不起，我理解有困难。请再试一次说话。"
+            };
+            
+            const langConfig = languageConfig[currentLanguage] || languageConfig['en-US'];
+            const errorMessage = errorMessages[currentLanguage] || errorMessages['en-US'];
+            
+            updateConversationDisplay(errorMessage, false, true);
+            
+            if (isVoiceEnabled) {
+                speakText(errorMessage);
+            }
+        }
+
+        // Load voice settings from localStorage
+        function loadVoiceSettings() {
+            const savedSettings = localStorage.getItem('voiceSettings');
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                
+                document.getElementById('speechRate').value = settings.speechRate || 1;
+                document.getElementById('voicePitch').value = settings.voicePitch || 1;
+                document.getElementById('voiceVolume').value = settings.voiceVolume || 1;
+                document.getElementById('voiceTypeSelector').value = settings.voiceType || 'default';
+                document.getElementById('autoLanguageDetection').checked = settings.autoLanguageDetection !== false;
+                document.getElementById('continuousListening').checked = settings.continuousListening || false;
+                document.getElementById('wakeWordEnabled').checked = settings.wakeWordEnabled !== false;
+                
+                // Apply settings
+                isContinuousListening = settings.continuousListening || false;
+                isWakeWordActive = settings.wakeWordEnabled !== false;
+            }
+        }
+
+        // Save voice settings to localStorage
+        function saveVoiceSettings() {
+            const settings = {
+                speechRate: document.getElementById('speechRate').value,
+                voicePitch: document.getElementById('voicePitch').value,
+                voiceVolume: document.getElementById('voiceVolume').value,
+                voiceType: document.getElementById('voiceTypeSelector').value,
+                autoLanguageDetection: document.getElementById('autoLanguageDetection').checked,
+                continuousListening: document.getElementById('continuousListening').checked,
+                wakeWordEnabled: document.getElementById('wakeWordEnabled').checked
+            };
+            
+            localStorage.setItem('voiceSettings', JSON.stringify(settings));
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mobile menu
+            document.getElementById('mobileMenuButton').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.add('active');
+            });
+
+            document.getElementById('closeMobileMenu').addEventListener('click', function() {
+                document.getElementById('mobileMenu').classList.remove('active');
+            });
+
+            // Mobile dropdown functionality
+            document.querySelectorAll('.mobile-dropdown-toggle').forEach(button => {
+                button.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    const icon = this.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            });
+
+            // Main voice button
+            document.getElementById('mainVoiceButton').addEventListener('click', function() {
+                if (isListening) {
+                    stopListening();
+                } else {
+                    startListening();
+                }
+            });
+
+            // Voice controls
+            document.getElementById('muteMicrophone').addEventListener('click', function() {
+                isVoiceEnabled = !isVoiceEnabled;
+                this.classList.toggle('text-red-500');
+                this.querySelector('i').className = isVoiceEnabled ? 'fas fa-microphone-slash' : 'fas fa-microphone';
+                
+                if (!isVoiceEnabled && isListening) {
+                    stopListening();
+                }
+            });
+
+            document.getElementById('toggleSpeaker').addEventListener('click', function() {
+                const isMuted = this.classList.contains('text-red-500');
+                this.classList.toggle('text-red-500');
+                this.querySelector('i').className = isMuted ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+                
+                if (isMuted) {
+                    synthesis.resume();
+                } else {
+                    synthesis.pause();
+                }
+            });
+
+            // Language selectors
+            document.getElementById('voiceLanguageSelector').addEventListener('change', function() {
+                switchLanguage(this.value);
+            });
+
+            document.getElementById('headerLanguageSelector').addEventListener('change', function() {
+                const fullLangCode = Object.keys(languageConfig).find(key => 
+                    languageConfig[key].code === this.value
+                ) || 'en-US';
+                switchLanguage(fullLangCode);
+            });
+
+            // Voice settings
+            document.getElementById('speechRate').addEventListener('change', function() {
+                saveVoiceSettings();
+            });
+
+            document.getElementById('voicePitch').addEventListener('change', function() {
+                saveVoiceSettings();
+            });
+
+            document.getElementById('voiceVolume').addEventListener('change', function() {
+                saveVoiceSettings();
+            });
+
+            document.getElementById('voiceTypeSelector').addEventListener('change', function() {
+                selectBestVoice();
+                saveVoiceSettings();
+            });
+
+            // Test voice button
+            document.getElementById('testVoice').addEventListener('click', function() {
+                const langConfig = languageConfig[currentLanguage] || languageConfig['en-US'];
+                const testMessage = `This is a test of the voice assistant in ${langConfig.name}. How does this sound?`;
+                speakText(testMessage);
+            });
+
+            // Voice settings checkboxes
+            document.getElementById('autoLanguageDetection').addEventListener('change', saveVoiceSettings);
+            
+            document.getElementById('continuousListening').addEventListener('change', function() {
+                isContinuousListening = this.checked;
+                saveVoiceSettings();
+            });
+
+            document.getElementById('wakeWordEnabled').addEventListener('change', function() {
+                isWakeWordActive = this.checked;
+                saveVoiceSettings();
+                
+                if (isWakeWordActive) {
+                    setupWakeWordDetection();
+                } else if (recognition && recognition.continuous) {
+                    recognition.stop();
+                }
+            });
+
+            // Quick voice actions
+            document.querySelectorAll('.quick-voice-action').forEach(button => {
+                button.addEventListener('click', function() {
+                    const command = this.dataset.command;
+                    const commands = {
+                        weather: 'What is the weather forecast for farming this week?',
+                        crops: 'What crops should I plant in my area right now?',
+                        livestock: 'Give me general livestock care advice.',
+                        market: 'What are the current market prices for agricultural products?'
+                    };
+                    
+                    const question = commands[command];
+                    if (question) {
+                        processVoiceInput(question);
+                    }
+                });
+            });
+
+            // Voice settings modal
+            document.getElementById('voiceSettings').addEventListener('click', function() {
+                // Voice settings are already visible in sidebar
+                document.querySelector('[data-target="voice-settings"]')?.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        }
+    </script>
+</body>
+</html>
